@@ -8,6 +8,15 @@ import type { AnswerRecord, RoomView } from "@/lib/game-types";
 type Credentials = { version: 1; playerId: string; playerToken: string; name: string };
 type AnswerResponse = { answer: AnswerRecord; totalScore: number };
 
+const PLAYER_POLL_MS = {
+  connecting: 1_000,
+  lobby: 3_000,
+  answering: 900,
+  waiting: 2_500,
+  leaderboard: 2_000,
+  hidden: 15_000,
+} as const;
+
 export function PlayerGame({ code }: { code: string }) {
   const [credentials, setCredentials] = useState<Credentials | null>(null);
   const [room, setRoom] = useState<RoomView | null>(null);
@@ -45,10 +54,37 @@ export function PlayerGame({ code }: { code: string }) {
   }, [code, credentials]);
 
   useEffect(() => {
-    void refresh();
-    const poller = window.setInterval(refresh, 900);
-    return () => window.clearInterval(poller);
-  }, [refresh]);
+    if (room?.status === "finished") return;
+
+    let stopped = false;
+    let poller: number | undefined;
+
+    const delay = () => {
+      if (document.hidden) return PLAYER_POLL_MS.hidden;
+      if (!room) return PLAYER_POLL_MS.connecting;
+      if (room.status === "lobby") return PLAYER_POLL_MS.lobby;
+      if (room.status === "leaderboard") return PLAYER_POLL_MS.leaderboard;
+      return room.myAnswer || answerResult ? PLAYER_POLL_MS.waiting : PLAYER_POLL_MS.answering;
+    };
+
+    const poll = async () => {
+      await refresh();
+      if (!stopped) poller = window.setTimeout(poll, delay());
+    };
+
+    const handleVisibility = () => {
+      if (poller) window.clearTimeout(poller);
+      if (!stopped) poller = window.setTimeout(poll, document.hidden ? PLAYER_POLL_MS.hidden : 0);
+    };
+
+    void poll();
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      stopped = true;
+      if (poller) window.clearTimeout(poller);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [answerResult, refresh, room?.myAnswer, room?.status]);
 
   useEffect(() => {
     const nextQuestion = room?.question?.index ?? -1;
