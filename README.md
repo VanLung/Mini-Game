@@ -1,33 +1,37 @@
 # Đại chiến Cyber City 4.0
 
-Mini game một màn hình dành cho Bài 2 Tin học 10: **Vai trò của thiết bị thông minh và Tin học đối với xã hội**.
+Trò chơi tương tác nhiều người dành cho Bài 2 Tin học 10: **Vai trò của thiết bị thông minh và Tin học đối với xã hội**.
 
 ## Chức năng
 
-- 4 đội, đổi tên và chấm điểm trực tiếp.
-- 17 câu hỏi trong 4 vòng kiến thức và một Boss cuối.
-- Đồng hồ đếm ngược theo từng câu.
-- Mở đáp án kèm giải thích.
-- Thẻ tăng tốc nhân đôi điểm một lần cho mỗi đội.
-- Âm thanh, toàn màn hình và phím tắt dành cho giáo viên.
-- Tự lưu điểm và tiến trình bằng `localStorage`.
+- Giao diện giáo viên và học sinh tách biệt.
+- Học sinh tham gia bằng mã phòng 6 số và tên hiển thị, không cần tài khoản.
+- Giáo viên xem trực tiếp tên, số lượng và tiến độ trả lời của học sinh.
+- 17 câu hỏi, tính điểm theo độ chính xác và tốc độ.
+- Phản hồi vui sau mỗi đáp án, bảng xếp hạng và bục vinh danh Top 3.
+- Giáo viên chỉnh thời gian, kết thúc câu hoặc kết thúc toàn bộ trò chơi.
+- Phòng chơi tự hết hạn sau 6 giờ.
 
 ## Chạy tại máy
 
 ```bash
 npm install
-npm run dev
+ALLOW_MEMORY_STORE=1 npm run dev
 ```
 
 Mở `http://localhost:3000`.
 
-## Phím tắt
+Chế độ bộ nhớ chỉ dùng để phát triển trên một máy. Bản triển khai nhiều thiết bị cần Redis.
 
-- `Space`: bắt đầu hoặc tạm dừng đồng hồ.
-- `A`: mở đáp án.
-- `→`: màn tiếp theo.
-- `←`: màn trước.
+## Kho dữ liệu
+
+Ứng dụng hỗ trợ Upstash Redis với một trong hai cặp biến môi trường:
+
+- `UPSTASH_REDIS_REST_URL` và `UPSTASH_REDIS_REST_TOKEN`
+- `KV_REST_API_URL` và `KV_REST_API_TOKEN`
+
+Không đưa token Redis vào mã nguồn hoặc biến `NEXT_PUBLIC_*`.
 
 ## Triển khai
 
-Dự án dùng Next.js App Router và có thể triển khai trực tiếp trên Vercel.
+Dự án dùng Next.js App Router, Route Handlers và Upstash Redis, tối ưu để triển khai trên Vercel.

@@ -401,3 +401,7 @@ export const gameScreens: GameScreen[] = [
     title: "Cyber City đã được khôi phục!",
   },
 ];
+
+export const quizQuestions = gameScreens.filter(
+  (screen): screen is QuestionScreen => screen.kind === "question",
+);

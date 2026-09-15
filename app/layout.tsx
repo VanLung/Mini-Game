@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Đại chiến Cyber City 4.0 | Tin học 10",
-  description: "Mini game Bài 2 Tin học 10 về thiết bị thông minh và vai trò của Tin học đối với xã hội.",
+  title: "Đại chiến Cyber City | Tin học 10",
+  description: "Trò chơi tương tác nhiều người dành cho Bài 2 Tin học 10.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
