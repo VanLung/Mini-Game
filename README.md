@@ -35,3 +35,5 @@ Không đưa token Redis vào mã nguồn hoặc biến `NEXT_PUBLIC_*`.
 ## Triển khai
 
 Dự án dùng Next.js App Router, Route Handlers và Upstash Redis, tối ưu để triển khai trên Vercel.
+
+Trang chơi Production: https://mini-game-nguyen-van-lung-s-projects.vercel.app/
