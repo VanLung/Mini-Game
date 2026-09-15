@@ -5,7 +5,14 @@ import Link from "next/link";
 import { Podium } from "@/components/Podium";
 import type { RoomView } from "@/lib/game-types";
 
-const POLL_MS = 900;
+const HOST_POLL_MS = {
+  connecting: 1_000,
+  lobby: 2_000,
+  question: 900,
+  leaderboard: 1_500,
+  finished: 60_000,
+  hidden: 10_000,
+} as const;
 
 export function HostGame({ code }: { code: string }) {
   const [room, setRoom] = useState<RoomView | null>(null);
@@ -32,10 +39,35 @@ export function HostGame({ code }: { code: string }) {
   }, [code, hostToken]);
 
   useEffect(() => {
-    void refresh();
-    const poller = window.setInterval(refresh, POLL_MS);
-    return () => window.clearInterval(poller);
-  }, [refresh]);
+    if (room?.status === "finished") return;
+
+    let stopped = false;
+    let poller: number | undefined;
+
+    const delay = () => {
+      if (document.hidden) return HOST_POLL_MS.hidden;
+      if (!room) return HOST_POLL_MS.connecting;
+      return HOST_POLL_MS[room.status];
+    };
+
+    const poll = async () => {
+      await refresh();
+      if (!stopped) poller = window.setTimeout(poll, delay());
+    };
+
+    const handleVisibility = () => {
+      if (poller) window.clearTimeout(poller);
+      if (!stopped) poller = window.setTimeout(poll, document.hidden ? HOST_POLL_MS.hidden : 0);
+    };
+
+    void poll();
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      stopped = true;
+      if (poller) window.clearTimeout(poller);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [refresh, room?.status]);
 
   useEffect(() => {
     const clock = window.setInterval(() => setNow(Date.now()), 250);
