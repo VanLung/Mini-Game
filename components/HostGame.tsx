@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { GameAvatar } from "@/components/GameAvatar";
 import { Podium } from "@/components/Podium";
+import { throwItemFor } from "@/lib/game-cosmetics";
 import type { RoomView } from "@/lib/game-types";
 
 const HOST_POLL_MS = {
@@ -119,7 +121,7 @@ export function HostGame({ code }: { code: string }) {
         <section className="host-lobby">
           <div className="lobby-heading"><p>HỌC SINH TRUY CẬP</p><h1>{shareUrl.replace(/^https?:\/\//, "")}</h1><span>Nhập mã <b>{code}</b> và tên để tham gia</span></div>
           <div className="host-settings"><span>Thời gian mỗi câu</span><div className="time-picker">{[10, 15, 20, 30, 45, 60].map((seconds) => <button className={seconds === room.timeLimit ? "active" : ""} disabled={busy} key={seconds} onClick={() => command("setTime", { seconds })}>{seconds}s</button>)}</div></div>
-          <div className="joined-board"><div className="joined-title"><h2>Đã vào phòng</h2><strong>{room.playerCount}</strong></div><div className="player-cloud">{room.players?.map((player, index) => <span style={{ "--delay": `${index * 35}ms` } as React.CSSProperties} key={player.id}>{player.name}</span>)}{room.playerCount === 0 && <p>Đang chờ những chiến binh đầu tiên...</p>}</div></div>
+          <div className="joined-board"><div className="joined-title"><h2>Đã vào phòng</h2><strong>{room.playerCount}</strong></div><div className="player-cloud">{room.players?.map((player, index) => <span style={{ "--delay": `${index * 35}ms` } as React.CSSProperties} key={player.id}><GameAvatar avatarId={player.avatarId} size="small" />{player.name}</span>)}{room.playerCount === 0 && <p>Đang chờ những chiến binh đầu tiên...</p>}</div></div>
           <button className="host-primary" disabled={busy || room.playerCount === 0} onClick={() => command("start")}>Bắt đầu chơi <span>→</span></button>
         </section>
       )}
@@ -139,7 +141,8 @@ export function HostGame({ code }: { code: string }) {
         <section className="leaderboard-screen">
           <p className="screen-kicker">BẢNG XẾP HẠNG</p><h1>Ai đang dẫn đầu?</h1>
           {room.question && <div className="answer-reveal"><b>Đáp án: {room.question.correctOption}</b><span>{room.question.explanation}</span></div>}
-          <div className="ranking-list">{room.leaderboard.slice(0, 8).map((player) => <div className={player.rank <= 3 ? `rank top-${player.rank}` : "rank"} key={player.id}><b>{player.rank}</b><span>{player.name}</span><strong>{player.score.toLocaleString("vi-VN")}</strong></div>)}</div>
+          {room.throws.length > 0 && <div className="host-battle-feed"><strong>ĐẤU TRƯỜNG ĐANG BÙNG NỔ</strong><div>{room.throws.slice(-6).reverse().map((event) => <span key={event.id}>{throwItemFor(event.itemId).emoji} <b>{event.fromName}</b> ném trúng {event.toName}</span>)}</div></div>}
+          <div className="ranking-list">{room.leaderboard.slice(0, 8).map((player) => <div className={player.rank <= 3 ? `rank top-${player.rank}` : "rank"} key={player.id}><b>{player.rank}</b><GameAvatar avatarId={player.avatarId} size="small" /><span>{player.name}<small>🎯 {player.hitsLanded} · 💥 {player.hitsReceived}</small></span><strong>{player.score.toLocaleString("vi-VN")}</strong></div>)}</div>
           <div className="host-controls"><button className="secondary-button" disabled={busy} onClick={() => command("setTime", { seconds: Math.max(5, (room.question?.timeLimit ?? 20) - 5) })}>−5 giây câu sau</button><button className="secondary-button" disabled={busy} onClick={() => command("setTime", { seconds: Math.min(120, (room.question?.timeLimit ?? 20) + 5) })}>+5 giây câu sau</button><button className="host-primary compact" disabled={busy} onClick={() => command("next")}>{room.question && room.question.index + 1 >= room.question.total ? "Xem kết quả" : "Câu tiếp theo →"}</button><button className="danger-button" disabled={busy} onClick={() => command("end")}>Kết thúc game</button></div>
         </section>
       )}

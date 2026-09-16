@@ -27,6 +27,7 @@ export async function POST() {
       revision: 1,
       players: {},
       answers: {},
+      throws: {},
     };
     if (await createRoom(room)) return Response.json({ code, hostToken });
   }

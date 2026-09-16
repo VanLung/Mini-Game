@@ -2,11 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { AVATARS } from "@/lib/game-cosmetics";
+import type { AvatarId } from "@/lib/game-cosmetics";
 
 export function Landing() {
   const router = useRouter();
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
+  const [avatarId, setAvatarId] = useState<AvatarId>("robot");
   const [busy, setBusy] = useState<"host" | "join" | null>(null);
   const [error, setError] = useState("");
 
@@ -38,13 +41,13 @@ export function Landing() {
       const response = await fetch(`/api/rooms/${cleanCode}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "join", name }),
+        body: JSON.stringify({ action: "join", name, avatarId }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
       window.localStorage.setItem(
         `cyber-city-player:${cleanCode}`,
-        JSON.stringify({ version: 1, playerId: data.playerId, playerToken: data.playerToken, name: data.name }),
+        JSON.stringify({ version: 1, playerId: data.playerId, playerToken: data.playerToken, name: data.name, avatarId: data.avatarId }),
       );
       router.push(`/play/${cleanCode}`);
     } catch (reason) {
@@ -69,6 +72,22 @@ export function Landing() {
             <div><h2>Học sinh</h2><p>Nhập mã trên màn hình giáo viên</p></div>
             <label><span>Mã phòng</span><input inputMode="numeric" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} placeholder="123 456" aria-label="Mã phòng" /></label>
             <label><span>Tên hiển thị</span><input maxLength={22} value={name} onChange={(event) => setName(event.target.value)} placeholder="Ví dụ: Minh Anh" aria-label="Tên hiển thị" /></label>
+            <fieldset className="avatar-picker">
+              <legend>Chọn chiến binh</legend>
+              {AVATARS.map((avatar) => (
+                <button
+                  aria-label={avatar.name}
+                  aria-pressed={avatar.id === avatarId}
+                  className={avatar.id === avatarId ? "selected" : ""}
+                  key={avatar.id}
+                  onClick={() => setAvatarId(avatar.id)}
+                  title={avatar.name}
+                  type="button"
+                >
+                  {avatar.emoji}
+                </button>
+              ))}
+            </fieldset>
             <button className="primary-button coral" disabled={busy !== null} type="submit">{busy === "join" ? "Đang vào..." : "Vào chơi →"}</button>
           </form>
 

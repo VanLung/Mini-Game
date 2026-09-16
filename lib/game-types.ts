@@ -1,4 +1,5 @@
 import type { Option } from "@/data/game-data";
+import type { AvatarId, ThrowItemId } from "@/lib/game-cosmetics";
 
 export type RoomStatus = "lobby" | "question" | "leaderboard" | "finished";
 
@@ -6,8 +7,20 @@ export type PlayerRecord = {
   id: string;
   token: string;
   name: string;
+  avatarId: AvatarId;
   score: number;
   joinedAt: number;
+};
+
+export type ThrowEvent = {
+  id: string;
+  questionIndex: number;
+  fromId: string;
+  fromName: string;
+  toId: string;
+  toName: string;
+  itemId: ThrowItemId;
+  createdAt: number;
 };
 
 export type AnswerRecord = {
@@ -29,10 +42,13 @@ export type GameRoom = {
   revision: number;
   players: Record<string, PlayerRecord>;
   answers: Record<string, Record<string, AnswerRecord>>;
+  throws: Record<string, ThrowEvent[]>;
 };
 
-export type PublicPlayer = Pick<PlayerRecord, "id" | "name" | "score" | "joinedAt"> & {
+export type PublicPlayer = Pick<PlayerRecord, "id" | "name" | "avatarId" | "score" | "joinedAt"> & {
   rank: number;
+  hitsLanded: number;
+  hitsReceived: number;
 };
 
 export type PublicQuestion = {
@@ -60,6 +76,9 @@ export type RoomView = {
   players?: PublicPlayer[];
   me?: PublicPlayer;
   myAnswer?: AnswerRecord;
+  throws: ThrowEvent[];
+  canThrow?: boolean;
+  hasThrown?: boolean;
 };
 
 export type ApiError = { error: string };

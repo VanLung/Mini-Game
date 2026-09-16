@@ -1,6 +1,8 @@
 import { randomBytes } from "node:crypto";
 import { quizQuestions } from "@/data/game-data";
-import type { AnswerRecord, GameRoom, PublicPlayer, RoomView } from "@/lib/game-types";
+import { AVATARS, THROW_ITEMS } from "@/lib/game-cosmetics";
+import type { AvatarId, ThrowItemId } from "@/lib/game-cosmetics";
+import type { AnswerRecord, GameRoom, PublicPlayer, RoomView, ThrowEvent } from "@/lib/game-types";
 import { mutateRoom, readRoom } from "@/lib/room-store";
 
 export const runtime = "nodejs";
@@ -23,9 +25,19 @@ function normalizeCode(value: string) {
 }
 
 function rankPlayers(room: GameRoom): PublicPlayer[] {
+  const allThrows = Object.values(room.throws ?? {}).flat();
   return Object.values(room.players)
     .sort((a, b) => b.score - a.score || a.joinedAt - b.joinedAt)
-    .map(({ id, name, score, joinedAt }, index) => ({ id, name, score, joinedAt, rank: index + 1 }));
+    .map(({ id, name, avatarId, score, joinedAt }, index) => ({
+      id,
+      name,
+      avatarId: avatarId ?? AVATARS[id.charCodeAt(0) % AVATARS.length].id,
+      score,
+      joinedAt,
+      rank: index + 1,
+      hitsLanded: allThrows.filter((event) => event.fromId === id).length,
+      hitsReceived: allThrows.filter((event) => event.toId === id).length,
+    }));
 }
 
 function currentQuestion(room: GameRoom, reveal: boolean) {
@@ -48,6 +60,7 @@ function currentQuestion(room: GameRoom, reveal: boolean) {
 function buildView(room: GameRoom, role: "host" | "player", playerId?: string): RoomView {
   const leaderboard = rankPlayers(room);
   const answers = room.answers[String(room.currentQuestion)] ?? {};
+  const throws = room.throws?.[String(room.currentQuestion)] ?? [];
   const reveal = room.status === "leaderboard" || room.status === "finished" || role === "host";
   const view: RoomView = {
     code: room.code,
@@ -57,11 +70,17 @@ function buildView(room: GameRoom, role: "host" | "player", playerId?: string): 
     answeredCount: Object.keys(answers).length,
     question: currentQuestion(room, reveal),
     leaderboard,
+    throws: throws.slice(-16),
   };
   if (role === "host") view.players = leaderboard;
   if (playerId) {
     view.me = leaderboard.find((player) => player.id === playerId);
     view.myAnswer = answers[playerId];
+    view.hasThrown = throws.some((event) => event.fromId === playerId);
+    view.canThrow = room.status === "leaderboard"
+      && Boolean(answers[playerId]?.correct)
+      && !view.hasThrown
+      && Object.values(answers).some((answer) => !answer.correct);
   }
   return view;
 }
@@ -75,6 +94,10 @@ function messageFor(error: string) {
     GAME_STARTED: "Trò chơi đã bắt đầu, không thể tham gia thêm.",
     ALREADY_ANSWERED: "Bạn đã trả lời câu này rồi.",
     QUESTION_CLOSED: "Câu hỏi đã kết thúc.",
+    THROW_CLOSED: "Chỉ có thể ném vui ở màn hình kết quả.",
+    THROW_NOT_ALLOWED: "Bạn cần trả lời đúng để nhận một lượt ném.",
+    THROW_USED: "Bạn đã dùng lượt ném của câu này rồi.",
+    NO_TARGETS: "Không có bạn trả lời sai để ném. Cả lớp quá giỏi!",
     INVALID_ACTION: "Thao tác không hợp lệ.",
   };
   return messages[error] ?? "Có lỗi xảy ra. Vui lòng thử lại.";
@@ -107,6 +130,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
 
   if (body.action === "join") {
     const name = typeof body.name === "string" ? body.name.trim().replace(/\s+/g, " ").slice(0, 22) : "";
+    const requestedAvatar = typeof body.avatarId === "string" ? body.avatarId : "";
+    const avatarId = (AVATARS.some((avatar) => avatar.id === requestedAvatar) ? requestedAvatar : "robot") as AvatarId;
     if (name.length < 2) return Response.json({ error: "Tên phải có ít nhất 2 ký tự." }, { status: 400 });
     const playerId = randomBytes(8).toString("hex");
     const playerToken = randomBytes(20).toString("hex");
@@ -115,10 +140,54 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
       if (Object.values(room.players).some((player) => player.name.localeCompare(name, "vi", { sensitivity: "base" }) === 0)) {
         return { error: "NAME_TAKEN" };
       }
-      room.players[playerId] = { id: playerId, token: playerToken, name, score: 0, joinedAt: Date.now() };
-      return { room, result: { playerId, playerToken, name } };
+      room.players[playerId] = { id: playerId, token: playerToken, name, avatarId, score: 0, joinedAt: Date.now() };
+      room.throws ??= {};
+      return { room, result: { playerId, playerToken, name, avatarId } };
     });
     if ("error" in outcome) return Response.json({ error: messageFor(outcome.error) }, { status: 409 });
+    return Response.json(outcome.result);
+  }
+
+  if (body.action === "throw") {
+    const playerId = typeof body.playerId === "string" ? body.playerId : "";
+    const playerToken = typeof body.playerToken === "string" ? body.playerToken : "";
+    const requestedItem = typeof body.itemId === "string" ? body.itemId : "";
+    const itemId = (THROW_ITEMS.some((item) => item.id === requestedItem) ? requestedItem : "") as ThrowItemId;
+    if (!itemId) return Response.json({ error: messageFor("INVALID_ACTION") }, { status: 400 });
+
+    const outcome = await mutateRoom(code, (room) => {
+      const player = room.players[playerId];
+      if (!player || player.token !== playerToken) return { error: "UNAUTHORIZED" };
+      if (room.status !== "leaderboard") return { error: "THROW_CLOSED" };
+
+      const answerKey = String(room.currentQuestion);
+      const answers = room.answers[answerKey] ?? {};
+      if (!answers[playerId]?.correct) return { error: "THROW_NOT_ALLOWED" };
+      room.throws ??= {};
+      room.throws[answerKey] ??= [];
+      if (room.throws[answerKey].some((event) => event.fromId === playerId)) return { error: "THROW_USED" };
+
+      const targets = Object.keys(answers).filter((targetId) => targetId !== playerId && answers[targetId] && !answers[targetId].correct && room.players[targetId]);
+      if (targets.length === 0) return { error: "NO_TARGETS" };
+      const targetId = targets[Math.floor(Math.random() * targets.length)];
+      const target = room.players[targetId];
+      const event: ThrowEvent = {
+        id: randomBytes(8).toString("hex"),
+        questionIndex: room.currentQuestion,
+        fromId: playerId,
+        fromName: player.name,
+        toId: targetId,
+        toName: target.name,
+        itemId,
+        createdAt: Date.now(),
+      };
+      room.throws[answerKey].push(event);
+      return { room, result: { event } };
+    });
+    if ("error" in outcome) {
+      const status = outcome.error === "UNAUTHORIZED" ? 401 : 409;
+      return Response.json({ error: messageFor(outcome.error) }, { status });
+    }
     return Response.json(outcome.result);
   }
 
