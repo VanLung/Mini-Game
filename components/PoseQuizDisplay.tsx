@@ -166,13 +166,25 @@ function choosePrimaryPose(results: PoseResults): Keypoint[] | undefined {
   return poses[bestIndex]?.points ?? poses[0]?.points;
 }
 
+let sharedAudioContext: AudioContext | null = null;
+
+function getAudioContext() {
+  if (sharedAudioContext && sharedAudioContext.state !== "closed") {
+    return sharedAudioContext;
+  }
+
+  const AudioContextClass =
+    window.AudioContext ||
+    (window as typeof window & { webkitAudioContext: typeof AudioContext })
+      .webkitAudioContext;
+
+  sharedAudioContext = new AudioContextClass();
+  return sharedAudioContext;
+}
+
 function playTone(kind: "correct" | "wrong" | "tick" | "go") {
   try {
-    const AudioContextClass =
-      window.AudioContext ||
-      (window as typeof window & { webkitAudioContext: typeof AudioContext })
-        .webkitAudioContext;
-    const ctx = new AudioContextClass();
+    const ctx = getAudioContext();
     const gain = ctx.createGain();
     gain.connect(ctx.destination);
 
@@ -200,9 +212,16 @@ function playTone(kind: "correct" | "wrong" | "tick" | "go") {
       0.001,
       ctx.currentTime + (kind === "tick" ? 0.18 : 0.55),
     );
-    window.setTimeout(() => void ctx.close(), 750);
   } catch {
     // Audio is optional.
+  }
+}
+
+function closeSharedAudio() {
+  const ctx = sharedAudioContext;
+  sharedAudioContext = null;
+  if (ctx && ctx.state !== "closed") {
+    void ctx.close().catch(() => undefined);
   }
 }
 
@@ -299,6 +318,7 @@ export function PoseQuizDisplay() {
   const destroyVision = useCallback(() => {
     stopCamera();
     freeModel();
+    closeSharedAudio();
   }, [freeModel, stopCamera]);
 
   const submitAnswer = useCallback(
