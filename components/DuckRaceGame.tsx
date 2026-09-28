@@ -714,7 +714,7 @@ export function DuckRaceGame() {
       }
       const x = (p.x * 0.5 + 0.5) * mount.clientWidth;
       const y = (-p.y * 0.5 + 0.5) * mount.clientHeight;
-      const depthScale = THREE.MathUtils.clamp(1.12 - p.z * 0.25, 0.72, 1.05);
+      const depthScale = THREE.MathUtils.clamp(1.18 - p.z * 0.18, 0.9, 1.16);
       element.style.opacity = "1";
       element.style.transform =
         "translate3d(" + x + "px," + y + "px,0) translate(-50%,-100%) scale(" + depthScale + ")";
@@ -861,9 +861,9 @@ export function DuckRaceGame() {
           || visibleIndexes.has(racer.index)
           || racer.effectText.length > 0
           || racer.finishedAt !== null && finishOrderRef.current.findIndex((item) => item.index === racer.index) < 3;
-        projectLabel(labels[index], racer.rig.group.position, duckScale * 3.65, showName);
+        projectLabel(labels[index], racer.rig.group.position, duckScale * 4.15, showName);
         effectLabels[index].textContent = racer.effectText;
-        if (racer.effectText) projectLabel(effectLabels[index], racer.rig.group.position, duckScale * 4.75, true);
+        if (racer.effectText) projectLabel(effectLabels[index], racer.rig.group.position, duckScale * 5.35, true);
         else effectLabels[index].style.opacity = "0";
 
         if (
