@@ -42,7 +42,7 @@ const SKELETON_EDGES: Array<[number, number]> = [
   [12, 14], [14, 16],
 ];
 
-const INFERENCE_INTERVAL_MS = 125;
+const INFERENCE_INTERVAL_MS = 160;
 
 function drawPoseOverlay(
   canvas: HTMLCanvasElement,
@@ -355,6 +355,19 @@ export function PoseQuizDisplay() {
       const video = videoRef.current;
       const model = modelRef.current;
       const now = performance.now();
+      const shouldInfer =
+        phaseRef.current === "countdown" || phaseRef.current === "question";
+
+      if (!shouldInfer) {
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const ctx = canvas.getContext("2d");
+          ctx?.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        loopRef.current = window.requestAnimationFrame(frame);
+        return;
+      }
+
       if (
         !video ||
         !model ||
@@ -511,7 +524,7 @@ export function PoseQuizDisplay() {
           setBackend(model.device ?? "auto");
         }
 
-        setModelStatus("YOLO26 Pose sẵn sàng · chế độ ổn định 8 FPS");
+        setModelStatus("YOLO26 Pose sẵn sàng · chế độ ổn định ~6 FPS");
         if (phaseRef.current === "booting" || phaseRef.current === "error") {
           setPhaseSafe("standby");
         }
