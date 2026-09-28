@@ -52,6 +52,8 @@ type Racer = {
   progress: number;
   baseSpeed: number;
   targetX: number;
+  startZ: number;
+  finishDistance: number;
   phase: number;
   finishedAt: number | null;
   boostUntil: number;
@@ -386,7 +388,7 @@ export function DuckRaceGame() {
       racer.ufoUntil = 0;
       racer.dramaUntil = 0;
       racer.effectText = "";
-      racer.rig.group.position.z = 0;
+      racer.rig.group.position.z = racer.startZ;
       racer.rig.group.position.y = 0;
       racer.rig.group.rotation.set(0, Math.PI, 0);
       racer.rig.body.scale.set(1, 1, 1);
@@ -651,6 +653,8 @@ export function DuckRaceGame() {
         progress: 0,
         baseSpeed: 2.45 + Math.random() * 0.65,
         targetX: x,
+        startZ: z,
+        finishDistance: z - finishZ,
         phase: Math.random() * Math.PI * 2,
         finishedAt: null,
         boostUntil: 0,
@@ -734,7 +738,7 @@ export function DuckRaceGame() {
 
       if (runningRef.current) {
         const elapsed = now - startedAtRef.current;
-        const finalSprint = racers.some((racer) => racer.progress > TRACK_LENGTH * 0.87);
+        const finalSprint = racers.some((racer) => racer.progress / racer.finishDistance > 0.87);
 
         if (!finalSprint && elapsed > nextEventAtRef.current) {
           triggerEvent(now);
@@ -763,7 +767,7 @@ export function DuckRaceGame() {
             racer.effectText = plannedRank === 0 ? "🔥 HÀO QUANG NHÂN VẬT CHÍNH" : racer.effectText;
           }
 
-          const terrainZ = -racer.progress;
+          const terrainZ = racer.startZ - racer.progress;
           if (terrainZ < -22 && terrainZ > -32) multiplier *= 0.84;
           if (terrainZ < -47 && terrainZ > -56) multiplier *= 0.91;
 
@@ -775,7 +779,7 @@ export function DuckRaceGame() {
 
           const weave = Math.sin(racer.phase * 0.22 + racer.index) * Math.min(0.38, trackWidth / 50);
           racer.rig.group.position.x = THREE.MathUtils.lerp(racer.rig.group.position.x, racer.targetX + weave, dt * 2.4);
-          racer.rig.group.position.z = 2.2 - racer.progress;
+          racer.rig.group.position.z = racer.startZ - racer.progress;
 
           const stepBounce = Math.abs(Math.sin(racer.phase * 2)) * 0.075 * Math.min(1.2, multiplier);
           racer.rig.group.position.y = stepBounce;
@@ -789,7 +793,7 @@ export function DuckRaceGame() {
             racer.rig.group.rotation.y = Math.PI + weave * 0.2;
           }
 
-          if (racer.progress >= TRACK_LENGTH - 5 && racer.finishedAt === null) {
+          if (racer.progress >= racer.finishDistance && racer.finishedAt === null) {
             racer.finishedAt = now;
             finishOrderRef.current.push({ index: racer.index, name: racer.name });
             racer.effectText = finishOrderRef.current.length <= 3 ? "🏁 #" + finishOrderRef.current.length : "🏁";
@@ -812,7 +816,9 @@ export function DuckRaceGame() {
       }
 
       const active = racers.filter((racer) => racer.finishedAt === null);
-      const sortedActive = [...active].sort((a, b) => b.progress - a.progress);
+      const sortedActive = [...active].sort(
+        (a, b) => b.progress / b.finishDistance - a.progress / a.finishDistance,
+      );
       const leader = sortedActive[0] ?? racers[0];
 
       if (leader) {
@@ -834,11 +840,12 @@ export function DuckRaceGame() {
             ? topGroup.reduce((sum, racer) => sum + racer.rig.group.position.z, 0) / topGroup.length
             : leader.rig.group.position.z;
           const progressSpread = topGroup.length > 1
-            ? Math.max(...topGroup.map((racer) => racer.progress)) - Math.min(...topGroup.map((racer) => racer.progress))
+            ? Math.max(...topGroup.map((racer) => racer.progress / racer.finishDistance))
+              - Math.min(...topGroup.map((racer) => racer.progress / racer.finishDistance))
             : 0;
-          const followZ = THREE.MathUtils.clamp(groupZ + 18 + progressSpread * 0.35, -TRACK_LENGTH + 18, 25);
-          const targetCamera = new THREE.Vector3(0, 10.2 + Math.min(4, progressSpread * 0.22), followZ);
-          if (runningRef.current && leader.progress > TRACK_LENGTH * 0.82) {
+          const followZ = THREE.MathUtils.clamp(groupZ + 18 + progressSpread * 18, -TRACK_LENGTH + 18, 25);
+          const targetCamera = new THREE.Vector3(0, 10.2 + Math.min(4, progressSpread * 8), followZ);
+          if (runningRef.current && leader.progress / leader.finishDistance > 0.82) {
             targetCamera.y = 7.8;
             targetCamera.z = followZ + 1.8;
           }
