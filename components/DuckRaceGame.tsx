@@ -331,6 +331,7 @@ export function DuckRaceGame() {
   const [entered, setEntered] = useState(false);
   const [running, setRunning] = useState(false);
   const [raceDuration, setRaceDuration] = useState(DEFAULT_RACE_DURATION);
+  const [raceSecondsLeft, setRaceSecondsLeft] = useState(DEFAULT_RACE_DURATION);
   const [muted, setMuted] = useState(false);
   const [eventText, setEventText] = useState<{ title: string; subtitle: string; emoji: string } | null>(null);
   const [rankings, setRankings] = useState<string[]>([]);
@@ -407,6 +408,7 @@ export function DuckRaceGame() {
 
     runningRef.current = true;
     setRunning(true);
+    setRaceSecondsLeft(raceDuration);
     setResult([]);
     setRankings([]);
     setEventText({ title: "ĐẠI LOẠN AO LÀNG!", subtitle: "Không phải con vịt nhanh nhất sẽ thắng.", emoji: "🦆" });
@@ -737,6 +739,7 @@ export function DuckRaceGame() {
       setRunning(false);
       const final = [...finishOrderRef.current];
       setResult(final);
+      setRaceSecondsLeft(0);
       setWinnerTitle(WINNER_TITLES[randomInt(WINNER_TITLES.length)]);
       setEventText(null);
       focusIndexRef.current = null;
@@ -909,6 +912,10 @@ export function DuckRaceGame() {
         const top = ordered.slice(0, 5);
         visibleIndexes = new Set(ordered.slice(0, count > 70 ? 6 : 10).map((racer) => racer.index));
         setRankings(top.map((racer) => racer.name));
+        if (runningRef.current) {
+          const elapsedSeconds = (now - startedAtRef.current) / 1000;
+          setRaceSecondsLeft(Math.max(0, Math.ceil(raceDurationRef.current - elapsedSeconds)));
+        }
       }
 
       renderer.render(scene, camera);
@@ -945,8 +952,9 @@ export function DuckRaceGame() {
   const changeRaceDuration = useCallback(() => {
     setResult([]);
     setRankings([]);
+    setRaceSecondsLeft(raceDuration);
     setEventText(null);
-  }, []);
+  }, [raceDuration]);
 
   if (!entered) {
     const count = parseNames(draft).length;
@@ -1053,7 +1061,11 @@ export function DuckRaceGame() {
           </div>
         )}
 
-        {running && <div className="duck-live-pill"><i /> ĐANG ĐUA · MỤC TIÊU {raceDuration} GIÂY</div>}
+        {running && (
+          <div className="duck-live-pill">
+            <i /> {raceSecondsLeft > 0 ? `CÒN ~${raceSecondsLeft} GIÂY` : "NƯỚC RÚT!"}
+          </div>
+        )}
 
         {result.length > 0 && (
           <div className="duck-result-screen" role="dialog" aria-modal="true">
