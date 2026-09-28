@@ -6,6 +6,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const STORAGE_KEY = "lunix-duck-race-class";
 const TRACK_LENGTH = 86;
+const DEFAULT_RACE_DURATION = 20;
+const RACE_DURATIONS = [15, 20, 30, 45] as const;
 
 const EVENTS = [
   { id: "bread", title: "BÁNH MÌ RƠI TỪ TRÊN TRỜI!", subtitle: "Có vịt quên luôn mình đang thi.", emoji: "🥖" },
@@ -322,11 +324,13 @@ export function DuckRaceGame() {
   const finalSprintShownRef = useRef(false);
   const focusIndexRef = useRef<number | null>(null);
   const focusUntilRef = useRef(0);
+  const raceDurationRef = useRef(DEFAULT_RACE_DURATION);
 
   const [draft, setDraft] = useState("");
   const [names, setNames] = useState<string[]>([]);
   const [entered, setEntered] = useState(false);
   const [running, setRunning] = useState(false);
+  const [raceDuration, setRaceDuration] = useState(DEFAULT_RACE_DURATION);
   const [muted, setMuted] = useState(false);
   const [eventText, setEventText] = useState<{ title: string; subtitle: string; emoji: string } | null>(null);
   const [rankings, setRankings] = useState<string[]>([]);
@@ -348,6 +352,10 @@ export function DuckRaceGame() {
   useEffect(() => {
     mutedRef.current = muted;
   }, [muted]);
+
+  useEffect(() => {
+    raceDurationRef.current = raceDuration;
+  }, [raceDuration]);
 
   const enterRace = useCallback(() => {
     const parsed = parseNames(draft);
@@ -373,7 +381,10 @@ export function DuckRaceGame() {
     targetOrderRef.current = order;
     finishOrderRef.current = [];
     startedAtRef.current = performance.now();
-    nextEventAtRef.current = 5200 + Math.random() * 1800;
+    raceDurationRef.current = raceDuration;
+    const durationMs = raceDuration * 1000;
+    nextEventAtRef.current = THREE.MathUtils.clamp(durationMs * 0.18, 2600, 5200)
+      + Math.random() * Math.min(900, durationMs * 0.04);
     lastEventIdRef.current = "";
     finalSprintShownRef.current = false;
     focusIndexRef.current = null;
@@ -401,7 +412,7 @@ export function DuckRaceGame() {
     setEventText({ title: "ĐẠI LOẠN AO LÀNG!", subtitle: "Không phải con vịt nhanh nhất sẽ thắng.", emoji: "🦆" });
     window.setTimeout(() => setEventText(null), 1900);
     if (!mutedRef.current) playRaceSound("start");
-  }, [names]);
+  }, [names, raceDuration]);
 
   const triggerEvent = useCallback((now: number) => {
     const racers = racersRef.current.filter((racer) => racer.finishedAt === null);
@@ -740,11 +751,16 @@ export function DuckRaceGame() {
 
       if (runningRef.current) {
         const elapsed = now - startedAtRef.current;
-        const finalSprint = racers.some((racer) => racer.progress / racer.finishDistance > 0.87);
+        const targetDurationMs = raceDurationRef.current * 1000;
+        const timeProgress = elapsed / targetDurationMs;
+        const paceScale = 28 / raceDurationRef.current;
+        const finalSprint = timeProgress >= 0.82
+          || racers.some((racer) => racer.progress / racer.finishDistance > 0.87);
 
         if (!finalSprint && elapsed > nextEventAtRef.current) {
           triggerEvent(now);
-          nextEventAtRef.current = elapsed + 4600 + Math.random() * 2400;
+          const eventGap = THREE.MathUtils.clamp(targetDurationMs * 0.2, 2800, 6200);
+          nextEventAtRef.current = elapsed + eventGap * (0.82 + Math.random() * 0.36);
         }
 
         const targetOrder = targetOrderRef.current;
@@ -755,26 +771,32 @@ export function DuckRaceGame() {
 
           const plannedRank = targetRank.get(racer.index) ?? racers.length;
           let multiplier = plannedRank === 0 ? 1.08 : plannedRank === 1 ? 1.045 : plannedRank === 2 ? 1.025 : 1;
-          if (now < racer.boostUntil) multiplier *= 1.65;
-          if (now < racer.slowUntil) multiplier *= 0.42;
-          if (now < racer.napUntil) multiplier = 0.05;
-          if (now < racer.dramaUntil) multiplier = 0.14;
-          if (now < racer.ufoUntil) multiplier *= 0.22;
+          if (!finalSprint) {
+            if (now < racer.boostUntil) multiplier *= 1.65;
+            if (now < racer.slowUntil) multiplier *= 0.42;
+            if (now < racer.napUntil) multiplier = 0.05;
+            if (now < racer.dramaUntil) multiplier = 0.14;
+            if (now < racer.ufoUntil) multiplier *= 0.22;
+          }
 
           if (finalSprint) {
             if (plannedRank === 0) multiplier *= 2.45;
             else if (plannedRank === 1) multiplier *= 1.32;
             else if (plannedRank === 2) multiplier *= 1.12;
-            else multiplier *= THREE.MathUtils.clamp(0.92 - plannedRank * 0.004, 0.68, 0.9);
+            else multiplier *= THREE.MathUtils.clamp(0.96 - plannedRank * 0.003, 0.8, 0.94);
             racer.effectText = plannedRank === 0 ? "🔥 HÀO QUANG NHÂN VẬT CHÍNH" : racer.effectText;
+          }
+
+          if (timeProgress > 0.88) {
+            multiplier *= 1 + THREE.MathUtils.clamp((timeProgress - 0.88) / 0.24, 0, 1) * 0.9;
           }
 
           const terrainZ = racer.startZ - racer.progress;
           if (terrainZ < -22 && terrainZ > -32) multiplier *= 0.84;
           if (terrainZ < -47 && terrainZ > -56) multiplier *= 0.91;
 
-          racer.progress += racer.baseSpeed * multiplier * dt;
-          racer.phase += dt * (8.2 + racer.baseSpeed * 1.6) * Math.max(0.15, multiplier);
+          racer.progress += racer.baseSpeed * paceScale * multiplier * dt;
+          racer.phase += dt * (8.2 + racer.baseSpeed * paceScale * 1.6) * Math.max(0.15, multiplier);
 
           const airborne = now < racer.ufoUntil;
           animateDuck(racer.rig, racer.phase, Math.min(1.5, multiplier), airborne);
@@ -920,6 +942,12 @@ export function DuckRaceGame() {
     window.setTimeout(() => startRace(), 80);
   }, [startRace]);
 
+  const changeRaceDuration = useCallback(() => {
+    setResult([]);
+    setRankings([]);
+    setEventText(null);
+  }, []);
+
   if (!entered) {
     const count = parseNames(draft).length;
     return (
@@ -998,7 +1026,23 @@ export function DuckRaceGame() {
             <span>🦆</span>
             <h2>Sẵn sàng đại loạn?</h2>
             <p>{names.length} con vịt đang chờ hiệu lệnh.</p>
-            <button onClick={startRace} type="button">BẮT ĐẦU ĐUA!</button>
+            <div className="duck-duration-picker" aria-label="Chọn thời lượng cuộc đua">
+              <b>Thời lượng mục tiêu</b>
+              <div>
+                {RACE_DURATIONS.map((seconds) => (
+                  <button
+                    aria-pressed={raceDuration === seconds}
+                    className={raceDuration === seconds ? "active" : ""}
+                    key={seconds}
+                    onClick={() => setRaceDuration(seconds)}
+                    type="button"
+                  >
+                    {seconds}s
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button className="duck-start-race-button" onClick={startRace} type="button">BẮT ĐẦU ĐUA · {raceDuration} GIÂY!</button>
           </div>
         )}
 
@@ -1009,7 +1053,7 @@ export function DuckRaceGame() {
           </div>
         )}
 
-        {running && <div className="duck-live-pill"><i /> CUỘC ĐUA ĐANG DIỄN RA</div>}
+        {running && <div className="duck-live-pill"><i /> ĐANG ĐUA · MỤC TIÊU {raceDuration} GIÂY</div>}
 
         {result.length > 0 && (
           <div className="duck-result-screen" role="dialog" aria-modal="true">
@@ -1024,6 +1068,7 @@ export function DuckRaceGame() {
               </div>
               <div className="duck-result-actions">
                 <button onClick={raceAgain} type="button">Đua lại 🔁</button>
+                <button onClick={changeRaceDuration} type="button">Đổi thời gian ⏱️</button>
                 <button onClick={() => setEntered(false)} type="button">Đổi danh sách</button>
               </div>
             </div>
