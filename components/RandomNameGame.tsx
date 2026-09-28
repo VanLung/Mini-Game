@@ -187,6 +187,9 @@ export function RandomNameGame() {
   const targetIndexRef = useRef<number | null>(null);
   const huntStartedAtRef = useRef(0);
   const caughtRef = useRef<CaughtStudent | null>(null);
+  const caughtIndexesRef = useRef<number[]>([]);
+  const mutedRef = useRef(false);
+  const noRepeatRef = useRef(true);
 
   const [draft, setDraft] = useState("");
   const [names, setNames] = useState<string[]>([]);
@@ -217,6 +220,18 @@ export function RandomNameGame() {
   useEffect(() => {
     caughtRef.current = caught;
   }, [caught]);
+
+  useEffect(() => {
+    caughtIndexesRef.current = caughtIndexes;
+  }, [caughtIndexes]);
+
+  useEffect(() => {
+    mutedRef.current = muted;
+  }, [muted]);
+
+  useEffect(() => {
+    noRepeatRef.current = noRepeat;
+  }, [noRepeat]);
 
   const studentColors = useMemo(
     () => names.map((name, index) => {
@@ -258,12 +273,13 @@ export function RandomNameGame() {
     huntingRef.current = false;
     targetIndexRef.current = null;
     setHunting(false);
+    caughtRef.current = result;
     setCaught(result);
-    if (noRepeat) {
+    if (noRepeatRef.current) {
       setCaughtIndexes((current) => current.includes(index) ? current : [...current, index]);
     }
-    if (!muted) playCue("caught");
-  }, [muted, names, noRepeat]);
+    if (!mutedRef.current) playCue("caught");
+  }, [names]);
 
   const startHunt = useCallback(() => {
     if (huntingRef.current || names.length === 0 || caughtRef.current) return;
@@ -379,8 +395,9 @@ export function RandomNameGame() {
     for (let index = 0; index < 24; index += 1) {
       const angle = (index / 24) * Math.PI * 2;
       const radius = ARENA_RADIUS + 2.7 + (index % 3) * 0.55;
-      const block = makeBox(0.7 + (index % 2) * 0.35, 0.6 + (index % 4) * 0.28, 0.7, index % 2 ? "#6148b8" : "#d9504c");
-      block.position.set(Math.cos(angle) * radius, -0.18 + block.geometry.parameters.height / 2, Math.sin(angle) * radius);
+      const blockHeight = 0.6 + (index % 4) * 0.28;
+      const block = makeBox(0.7 + (index % 2) * 0.35, blockHeight, 0.7, index % 2 ? "#6148b8" : "#d9504c");
+      block.position.set(Math.cos(angle) * radius, -0.18 + blockHeight / 2, Math.sin(angle) * radius);
       block.rotation.y = -angle;
       scene.add(block);
     }
@@ -628,7 +645,7 @@ export function RandomNameGame() {
       camera.lookAt(cameraTarget);
 
       students.forEach((student, index) => {
-        const faded = noRepeat && caughtIndexes.includes(index) ? 0.62 : 1;
+        const faded = noRepeatRef.current && caughtIndexesRef.current.includes(index) ? 0.62 : 1;
         projectLabel(labels[index], student.rig.group.position, 4.05, faded);
       });
       projectLabel(teacherLabel, teacherRig.group.position, 4.45, 1);
@@ -656,7 +673,7 @@ export function RandomNameGame() {
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [caughtIndexes, finishCatch, names, noRepeat, shuffleSeed, started, studentColors]);
+  }, [finishCatch, names, shuffleSeed, started, studentColors]);
 
   if (!started) {
     const previewCount = parseNames(draft).length;
