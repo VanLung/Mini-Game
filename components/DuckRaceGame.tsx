@@ -414,7 +414,9 @@ export function DuckRaceGame() {
     window.setTimeout(() => setEventText(null), 2600);
     if (!mutedRef.current) playRaceSound("event");
 
-    const byProgress = [...racers].sort((a, b) => b.progress - a.progress);
+    const byProgress = [...racers].sort(
+      (a, b) => b.progress / b.finishDistance - a.progress / a.finishDistance,
+    );
     const randomRacer = () => racers[randomInt(racers.length)];
     let focus: Racer | null = null;
 
@@ -880,7 +882,7 @@ export function DuckRaceGame() {
           if (a.finishedAt !== null && b.finishedAt !== null) return a.finishedAt - b.finishedAt;
           if (a.finishedAt !== null) return -1;
           if (b.finishedAt !== null) return 1;
-          return b.progress - a.progress;
+          return b.progress / b.finishDistance - a.progress / a.finishDistance;
         });
         const top = ordered.slice(0, 5);
         visibleIndexes = new Set(ordered.slice(0, count > 70 ? 6 : 10).map((racer) => racer.index));
