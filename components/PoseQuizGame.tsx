@@ -231,6 +231,7 @@ export function PoseQuizGame() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [score, setScore] = useState(0);
+  const [correctCount, setCorrectCount] = useState(0);
   const [streak, setStreak] = useState(0);
   const [feedback, setFeedback] = useState<{
     selected: AnswerKey | null;
@@ -262,26 +263,30 @@ export function PoseQuizGame() {
   }, []);
 
   const saveQuestions = useCallback(() => {
-    const cleaned = questions
-      .map((question) => ({
-        ...question,
-        prompt: question.prompt.trim(),
-        options: {
-          A: question.options.A.trim(),
-          B: question.options.B.trim(),
-          C: question.options.C.trim(),
-          D: question.options.D.trim(),
-        },
-        seconds: clampSeconds(question.seconds),
-      }))
-      .filter(
-        (question) =>
-          question.prompt &&
-          ANSWERS.every((answer) => question.options[answer]),
-      );
+    const cleaned = questions.map((question) => ({
+      ...question,
+      prompt: question.prompt.trim(),
+      options: {
+        A: question.options.A.trim(),
+        B: question.options.B.trim(),
+        C: question.options.C.trim(),
+        D: question.options.D.trim(),
+      },
+      seconds: clampSeconds(question.seconds),
+    }));
 
     if (!cleaned.length) {
-      setError("Cần ít nhất 1 câu hỏi đầy đủ 4 đáp án.");
+      setError("Cần ít nhất 1 câu hỏi.");
+      return false;
+    }
+    if (
+      cleaned.some(
+        (question) =>
+          !question.prompt ||
+          ANSWERS.some((answer) => !question.options[answer]),
+      )
+    ) {
+      setError("Hãy hoàn thiện đủ nội dung và 4 đáp án cho mọi câu hỏi, hoặc xóa câu chưa dùng.");
       return false;
     }
 
@@ -378,6 +383,7 @@ export function PoseQuizGame() {
 
       if (isCorrect) {
         setScore((value) => value + 100 + remaining * 5 + streak * 10);
+        setCorrectCount((value) => value + 1);
         setStreak((value) => value + 1);
         playTone("correct");
       } else {
@@ -403,6 +409,7 @@ export function PoseQuizGame() {
 
     setScreen("play");
     setScore(0);
+    setCorrectCount(0);
     setStreak(0);
     setAnsweredCount(0);
     setError("");
@@ -410,6 +417,10 @@ export function PoseQuizGame() {
     setModelStatus("Đang tải YOLO26n-pose…");
 
     try {
+      await new Promise<void>((resolve) => {
+        window.requestAnimationFrame(() => resolve());
+      });
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "user",
@@ -682,7 +693,7 @@ export function PoseQuizGame() {
 
   if (screen === "finished") {
     const accuracy = questions.length
-      ? Math.round((score > 0 ? answeredCount : 0) / Math.max(1, questions.length) * 100)
+      ? Math.round((correctCount / Math.max(1, questions.length)) * 100)
       : 0;
     return (
       <main className="pose-finish-screen">
@@ -700,6 +711,7 @@ export function PoseQuizGame() {
             onClick={() => {
               setCurrentIndex(0);
               setScore(0);
+              setCorrectCount(0);
               setStreak(0);
               setAnsweredCount(0);
               setScreen("studio");
