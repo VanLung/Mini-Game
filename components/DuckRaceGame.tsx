@@ -456,6 +456,7 @@ export function DuckRaceGame() {
       const x = -trackWidth / 2 + 1 + xGap * (col + 0.5);
       const z = 2.2 + row * 1.35;
       rig.group.position.set(x, 0, z);
+      rig.group.rotation.y = Math.PI;
       scene.add(rig.group);
       return {
         index,
@@ -584,7 +585,7 @@ export function DuckRaceGame() {
             racer.rig.group.position.y += 2.2 + Math.sin(now * 0.009) * 0.7;
             racer.rig.group.rotation.y += dt * 3.5;
           } else {
-            racer.rig.group.rotation.y = weave * 0.25;
+            racer.rig.group.rotation.y = Math.PI + weave * 0.25;
           }
 
           if (racer.progress >= TRACK_LENGTH - 5 && racer.finishedAt === null) {
