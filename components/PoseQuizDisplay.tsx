@@ -42,7 +42,7 @@ const SKELETON_EDGES: Array<[number, number]> = [
   [12, 14], [14, 16],
 ];
 
-const INFERENCE_INTERVAL_MS = 160;
+const INFERENCE_INTERVAL_MS = 110;
 
 function drawPoseOverlay(
   canvas: HTMLCanvasElement,
@@ -111,7 +111,7 @@ function classifyPose(points: Keypoint[] | undefined): AnswerKey | null {
   const leftWrist = points[9];
   const rightWrist = points[10];
 
-  const visible = (point: Keypoint) => (point?.[2] ?? 0) >= 0.35;
+  const visible = (point: Keypoint) => (point?.[2] ?? 0) >= 0.2;
   if (
     !visible(leftShoulder) ||
     !visible(rightShoulder) ||
@@ -405,7 +405,7 @@ export function PoseQuizDisplay() {
 
       try {
         const results = await model.predict(video, {
-          conf: 0.28,
+          conf: 0.2,
           iou: 0.65,
         });
 
@@ -492,8 +492,8 @@ export function PoseQuizDisplay() {
           const stream = await navigator.mediaDevices.getUserMedia({
             video: {
               facingMode: "user",
-              width: { ideal: 640, max: 640 },
-              height: { ideal: 360, max: 480 },
+              width: { ideal: 960, max: 960 },
+              height: { ideal: 540, max: 540 },
               frameRate: { ideal: 24, max: 30 },
             },
             audio: false,
@@ -537,14 +537,18 @@ export function PoseQuizDisplay() {
 
           const module = await import("@ultralytics/yolo");
           const model = (await module.YOLO.load(modelBlob, {
-            device: "cpu",
+            device: "auto",
           })) as YoloModel;
 
           modelRef.current = model;
           setBackend(model.device ?? "auto");
         }
 
-        setModelStatus("YOLO26 Pose sẵn sàng · CPU stable · ~6 FPS");
+        setModelStatus(
+          "YOLO26 Pose sẵn sàng · " +
+            (modelRef.current?.device ?? "auto").toUpperCase() +
+            " · realtime",
+        );
         if (phaseRef.current === "booting" || phaseRef.current === "error") {
           setPhaseSafe("standby");
         }
