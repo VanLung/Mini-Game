@@ -1,5 +1,69 @@
-import { Landing } from "@/components/Landing";
+import Link from "next/link";
+
+const games = [
+  {
+    href: "/cyber-city",
+    eyebrow: "QUIZ NHIỀU NGƯỜI",
+    title: "Đại chiến Cyber City",
+    description: "Học sinh vào bằng mã phòng, trả lời câu hỏi, leo bảng xếp hạng và tương tác trong đấu trường.",
+    icon: "⚡",
+    className: "hub-card cyber",
+    status: "Sẵn sàng",
+  },
+  {
+    href: "/random-name",
+    eyebrow: "RANDOM NAME · BỊT MẮT BẮT DÊ",
+    title: "Random Name",
+    description: "Đưa cả lớp vào đấu trường vòng tròn, giáo viên bịt mắt săn ngẫu nhiên một học sinh.",
+    icon: "🙈",
+    className: "hub-card random",
+    status: "Mới",
+  },
+];
 
 export default function Home() {
-  return <Landing />;
+  return (
+    <main className="game-hub-shell">
+      <section className="game-hub">
+        <header className="hub-header">
+          <div className="hub-mark">RL</div>
+          <div>
+            <p>ROBO LUNIX · CLASSROOM GAMES</p>
+            <h1>Game Hub</h1>
+            <span>Chọn trò chơi để bắt đầu. Các game mới sau này sẽ được thêm trực tiếp tại đây.</span>
+          </div>
+        </header>
+
+        <div className="hub-grid">
+          {games.map((game) => (
+            <Link className={game.className} href={game.href} key={game.href}>
+              <div className="hub-card-top">
+                <span className="hub-card-icon" aria-hidden="true">{game.icon}</span>
+                <b>{game.status}</b>
+              </div>
+              <div className="hub-card-copy">
+                <p>{game.eyebrow}</p>
+                <h2>{game.title}</h2>
+                <span>{game.description}</span>
+              </div>
+              <div className="hub-card-action">Mở game <strong>→</strong></div>
+            </Link>
+          ))}
+
+          <article className="hub-card future" aria-label="Vị trí dành cho trò chơi mới">
+            <div className="hub-card-top">
+              <span className="hub-card-icon" aria-hidden="true">＋</span>
+              <b>Mở rộng</b>
+            </div>
+            <div className="hub-card-copy">
+              <p>GAME TIẾP THEO</p>
+              <h2>Thêm game mới</h2>
+              <span>Cấu trúc Home đã sẵn sàng để gắn thêm các game khác mà không ảnh hưởng game hiện có.</span>
+            </div>
+            <div className="hub-card-action muted">Game Hub có thể mở rộng</div>
+          </article>
+        </div>
+      </section>
+    </main>
+  );
 }
