@@ -36,6 +36,7 @@ function readSessionId() {
 
 export function PoseQuizControl() {
   const channelRef = useRef<BroadcastChannel | null>(null);
+  const currentIndexRef = useRef(0);
   const [sessionId, setSessionId] = useState("");
   const [questions, setQuestions] = useState<PoseQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -56,15 +57,22 @@ export function PoseQuizControl() {
 
     if (!id) {
       setChannelError("Thiếu mã phiên. Hãy mở Presenter Mode lại từ Question Studio.");
-      return;
     }
+  }, []);
+
+  useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
+
+  useEffect(() => {
+    if (!sessionId) return;
 
     if (!("BroadcastChannel" in window)) {
       setChannelError("Trình duyệt này không hỗ trợ BroadcastChannel. Hãy dùng Chrome hoặc Edge mới.");
       return;
     }
 
-    const channel = new BroadcastChannel(poseChannelName(id));
+    const channel = new BroadcastChannel(poseChannelName(sessionId));
     channelRef.current = channel;
     channel.onmessage = (event: MessageEvent<DisplayTelemetry>) => {
       const message = event.data;
@@ -72,21 +80,24 @@ export function PoseQuizControl() {
       setTelemetry(message);
     };
 
-    const syncTimer = window.setInterval(() => {
+    const sendSync = () => {
       channel.postMessage({
         type: "sync",
-        index: currentIndex,
+        index: currentIndexRef.current,
         paused: false,
-        sessionId: id,
+        sessionId,
       } satisfies TeacherCommand);
-    }, 2500);
+    };
+
+    sendSync();
+    const syncTimer = window.setInterval(sendSync, 2500);
 
     return () => {
       window.clearInterval(syncTimer);
       channel.close();
       channelRef.current = null;
     };
-  }, [currentIndex]);
+  }, [sessionId]);
 
   const openDisplay = () => {
     if (!sessionId) return;
