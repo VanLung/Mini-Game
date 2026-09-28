@@ -28,6 +28,15 @@ const games = [
     className: "hub-card duck",
     status: "Mới",
   },
+  {
+    href: "/pose-quiz",
+    eyebrow: "AI VISION · YOLO26 POSE",
+    title: "Pose Quiz AI",
+    description: "Trả lời trắc nghiệm bằng tư thế cơ thể qua camera, nhận diện keypoint realtime và khóa đáp án bằng chuyển động.",
+    icon: "🕺",
+    className: "hub-card pose",
+    status: "AI",
+  },
 ];
 
 export default function Home() {
