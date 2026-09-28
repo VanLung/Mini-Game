@@ -983,7 +983,7 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   line-height: 1.4;
   font-weight: 750;
 }
-.duck-start-panel button {
+.duck-start-race-button {
   min-height: 52px;
   padding: 11px 22px;
   border: 2px solid var(--ink);
@@ -993,6 +993,42 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   cursor: pointer;
   font-size: clamp(16px, 1.15vw, 18px);
   font-weight: 950;
+}
+.duck-duration-picker {
+  display: grid;
+  gap: 9px;
+  margin: 0 0 18px;
+  text-align: left;
+}
+.duck-duration-picker > b {
+  color: #504a5e;
+  font-size: clamp(13px, .95vw, 15px);
+  letter-spacing: .03em;
+}
+.duck-duration-picker > div {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.duck-duration-picker button {
+  min-height: 46px;
+  border: 2px solid rgba(23,21,43,.65);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 2px 2px 0 rgba(23,21,43,.45);
+  cursor: pointer;
+  font-size: clamp(15px, 1.05vw, 17px);
+  font-weight: 950;
+}
+.duck-duration-picker button:hover {
+  transform: translateY(-1px);
+}
+.duck-duration-picker button.active,
+.duck-duration-picker button[aria-pressed="true"] {
+  border-color: var(--ink);
+  background: #ffce45;
+  box-shadow: 3px 3px 0 var(--ink);
 }
 .duck-event-banner {
   position: absolute;
@@ -1174,6 +1210,8 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   .duck-ranking > div:nth-of-type(n+4) { display: none; }
   .duck-event-banner { top: 9%; padding: 13px 15px; }
   .duck-event-banner small { display: none; }
+  .duck-duration-picker > div { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .duck-duration-picker button { min-height: 42px; font-size: 14px; }
   .duck-name-tag { max-width: 150px; padding: 5px 8px; font-size: 12px; }
   .duck-effect-tag { font-size: 11px; }
   .duck-ranking em { font-size: 13px; }
