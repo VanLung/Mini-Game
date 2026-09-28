@@ -30,11 +30,70 @@ type YoloModel = {
   free: () => void;
 };
 
-type AnnotateFn = (
+type DisplayPhase = DisplayTelemetry["phase"];
+
+const SKELETON_EDGES: Array<[number, number]> = [
+  [5, 7], [7, 9],
+  [6, 8], [8, 10],
+  [5, 6],
+  [5, 11], [6, 12],
+  [11, 12],
+  [11, 13], [13, 15],
+  [12, 14], [14, 16],
+];
+
+const INFERENCE_INTERVAL_MS = 125;
+
+function drawPoseOverlay(
   canvas: HTMLCanvasElement,
-  source: HTMLVideoElement,
+  video: HTMLVideoElement,
   results: PoseResults,
-) => Promise<void>;
+) {
+  const width = video.videoWidth || 640;
+  const height = video.videoHeight || 360;
+
+  if (canvas.width !== width) canvas.width = width;
+  if (canvas.height !== height) canvas.height = height;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  ctx.clearRect(0, 0, width, height);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  const poses = (results.keypoints ?? []).slice(0, 6);
+  for (const pose of poses) {
+    const points = pose.points ?? [];
+
+    ctx.strokeStyle = "rgba(89, 242, 213, .92)";
+    ctx.lineWidth = Math.max(2, width / 260);
+    ctx.shadowColor = "rgba(89, 242, 213, .45)";
+    ctx.shadowBlur = 8;
+
+    for (const [a, b] of SKELETON_EDGES) {
+      const p1 = points[a];
+      const p2 = points[b];
+      if (!p1 || !p2 || (p1[2] ?? 0) < 0.3 || (p2[2] ?? 0) < 0.3) continue;
+      ctx.beginPath();
+      ctx.moveTo(p1[0], p1[1]);
+      ctx.lineTo(p2[0], p2[1]);
+      ctx.stroke();
+    }
+
+    ctx.shadowBlur = 0;
+    for (const point of points) {
+      if (!point || (point[2] ?? 0) < 0.3) continue;
+      ctx.beginPath();
+      ctx.fillStyle = "#dffcf5";
+      ctx.arc(point[0], point[1], Math.max(2.5, width / 220), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#59f2d5";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  }
+}
 
 type DisplayPhase = DisplayTelemetry["phase"];
 
@@ -154,12 +213,12 @@ export function PoseQuizDisplay() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const modelRef = useRef<YoloModel | null>(null);
-  const annotateRef = useRef<AnnotateFn | null>(null);
   const channelRef = useRef<BroadcastChannel | null>(null);
   const loopRef = useRef<number | null>(null);
   const visionActiveRef = useRef(false);
   const busyRef = useRef(false);
   const consecutiveErrorsRef = useRef(0);
+  const lastInferenceAtRef = useRef(0);
   const candidateRef = useRef<{ answer: AnswerKey | null; since: number }>({
     answer: null,
     since: 0,
@@ -237,7 +296,6 @@ export function PoseQuizDisplay() {
       // Best effort cleanup.
     }
     modelRef.current = null;
-    annotateRef.current = null;
   }, []);
 
   const destroyVision = useCallback(() => {
@@ -298,11 +356,19 @@ export function PoseQuizDisplay() {
 
       const video = videoRef.current;
       const model = modelRef.current;
-      if (!video || !model || video.readyState < 2 || busyRef.current) {
+      const now = performance.now();
+      if (
+        !video ||
+        !model ||
+        video.readyState < 2 ||
+        busyRef.current ||
+        now - lastInferenceAtRef.current < INFERENCE_INTERVAL_MS
+      ) {
         loopRef.current = window.requestAnimationFrame(frame);
         return;
       }
 
+      lastInferenceAtRef.current = now;
       busyRef.current = true;
       let keepRunning = true;
 
@@ -315,8 +381,8 @@ export function PoseQuizDisplay() {
         consecutiveErrorsRef.current = 0;
 
         const canvas = canvasRef.current;
-        if (canvas && annotateRef.current) {
-          await annotateRef.current(canvas, video, results);
+        if (canvas) {
+          drawPoseOverlay(canvas, video, results);
         }
 
         if (typeof results.speed?.inference === "number") {
@@ -395,8 +461,9 @@ export function PoseQuizDisplay() {
           const stream = await navigator.mediaDevices.getUserMedia({
             video: {
               facingMode: "user",
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
+              width: { ideal: 640, max: 640 },
+              height: { ideal: 360, max: 480 },
+              frameRate: { ideal: 24, max: 30 },
             },
             audio: false,
           });
@@ -443,11 +510,10 @@ export function PoseQuizDisplay() {
           })) as YoloModel;
 
           modelRef.current = model;
-          annotateRef.current = module.annotate as unknown as AnnotateFn;
           setBackend(model.device ?? "auto");
         }
 
-        setModelStatus("YOLO26 Pose sẵn sàng");
+        setModelStatus("YOLO26 Pose sẵn sàng · chế độ ổn định 8 FPS");
         if (phaseRef.current === "booting" || phaseRef.current === "error") {
           setPhaseSafe("standby");
         }
