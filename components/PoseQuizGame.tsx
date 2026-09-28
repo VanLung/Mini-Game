@@ -36,6 +36,8 @@ type AnnotateFn = (
 ) => Promise<void>;
 
 const STORAGE_KEY = "lunix-pose-quiz-questions-v1";
+const MODEL_URL =
+  "https://huggingface.co/zwh20081/yolo26-onnx/resolve/main/yolo26n-pose.onnx?download=true";
 const HOLD_MS = 800;
 const ANSWERS: AnswerKey[] = ["A", "B", "C", "D"];
 
@@ -443,8 +445,34 @@ export function PoseQuizGame() {
       await video.play();
       setCameraStatus("Camera sẵn sàng");
 
+      setModelStatus("Đang tải model YOLO26 Pose…");
+      const response = await fetch(MODEL_URL, {
+        cache: "force-cache",
+        mode: "cors",
+      });
+      if (!response.ok) {
+        throw new Error(
+          "Không tải được model AI (HTTP " + response.status + ").",
+        );
+      }
+
+      const modelBlob = await response.blob();
+      if (modelBlob.size < 5_000_000) {
+        throw new Error(
+          "Model AI tải về không hợp lệ (" +
+            (modelBlob.size / 1024 / 1024).toFixed(1) +
+            " MB).",
+        );
+      }
+
+      setModelStatus(
+        "Đã tải " +
+          (modelBlob.size / 1024 / 1024).toFixed(1) +
+          " MB · đang khởi tạo AI…",
+      );
+
       const module = await import("@ultralytics/yolo");
-      const model = (await module.YOLO.load("/models/yolo26n-pose.onnx", {
+      const model = (await module.YOLO.load(modelBlob, {
         device: "auto",
       })) as YoloModel;
       modelRef.current = model;
@@ -509,10 +537,14 @@ export function PoseQuizGame() {
     } catch (reason) {
       stopVision();
       setScreen("studio");
-      const message =
+      const rawMessage =
         reason instanceof Error
           ? reason.message
           : "Không thể khởi động camera hoặc model AI.";
+      const message =
+        rawMessage === "Load failed" || rawMessage.includes("Failed to fetch")
+          ? "Không tải được model AI từ mạng. Hãy kiểm tra kết nối Internet rồi thử lại."
+          : rawMessage;
       setError(message);
       setCameraStatus("Camera chưa sẵn sàng");
       setModelStatus("AI chưa sẵn sàng");
