@@ -517,14 +517,14 @@ export function PoseQuizDisplay() {
 
           const module = await import("@ultralytics/yolo");
           const model = (await module.YOLO.load(modelBlob, {
-            device: "auto",
+            device: "cpu",
           })) as YoloModel;
 
           modelRef.current = model;
           setBackend(model.device ?? "auto");
         }
 
-        setModelStatus("YOLO26 Pose sẵn sàng · chế độ ổn định ~6 FPS");
+        setModelStatus("YOLO26 Pose sẵn sàng · CPU stable · ~6 FPS");
         if (phaseRef.current === "booting" || phaseRef.current === "error") {
           setPhaseSafe("standby");
         }
