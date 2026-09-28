@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const STORAGE_KEY = "lunix-duck-race-class";
-const TRACK_LENGTH = 82;
+const TRACK_LENGTH = 86;
 
 const EVENTS = [
   { id: "bread", title: "BÁNH MÌ RƠI TỪ TRÊN TRỜI!", subtitle: "Có vịt quên luôn mình đang thi.", emoji: "🥖" },
@@ -26,13 +26,23 @@ const WINNER_TITLES = [
   "BẬC THẦY CHIẾN THUẬT CHẠY ĐẠI",
 ];
 
+const DUCK_COLORS = [
+  ["#ffd44a", "#ffe989"],
+  ["#fff5d5", "#ffffff"],
+  ["#e8b76e", "#f6d59d"],
+  ["#f4d35e", "#fff0a3"],
+  ["#ded7c8", "#f8f4eb"],
+] as const;
+
 type DuckRig = {
   group: THREE.Group;
+  body: THREE.Group;
   leftWing: THREE.Mesh;
   rightWing: THREE.Mesh;
-  leftLeg: THREE.Mesh;
-  rightLeg: THREE.Mesh;
+  leftLeg: THREE.Group;
+  rightLeg: THREE.Group;
   head: THREE.Group;
+  tail: THREE.Mesh;
 };
 
 type Racer = {
@@ -83,6 +93,31 @@ function shuffle<T>(items: T[]) {
   return result;
 }
 
+function standardMaterial(
+  color: THREE.ColorRepresentation,
+  roughness = 0.72,
+  metalness = 0,
+) {
+  return new THREE.MeshStandardMaterial({ color, roughness, metalness });
+}
+
+function sphere(
+  radius: number,
+  color: THREE.ColorRepresentation,
+  segments: number,
+  scale: [number, number, number] = [1, 1, 1],
+  roughness = 0.7,
+) {
+  const mesh = new THREE.Mesh(
+    new THREE.SphereGeometry(radius, segments, Math.max(6, Math.floor(segments * 0.7))),
+    standardMaterial(color, roughness),
+  );
+  mesh.scale.set(scale[0], scale[1], scale[2]);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
 function box(
   width: number,
   height: number,
@@ -92,69 +127,153 @@ function box(
 ) {
   const mesh = new THREE.Mesh(
     new THREE.BoxGeometry(width, height, depth),
-    new THREE.MeshStandardMaterial({ color, roughness, metalness: 0.01 }),
+    standardMaterial(color, roughness),
   );
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   return mesh;
 }
 
-function createDuck(scale = 1): DuckRig {
-  const group = new THREE.Group();
-
-  const body = box(1.35, 0.95, 1.75, "#f7cf42");
-  body.position.y = 1.2;
-  group.add(body);
-
-  const chest = box(1.08, 0.58, 0.7, "#ffe475");
-  chest.position.set(0, 1.1, 0.86);
-  group.add(chest);
-
-  const headGroup = new THREE.Group();
-  headGroup.position.set(0, 2.2, 0.5);
-  const head = box(1.05, 1.0, 1.0, "#f9d84f");
-  headGroup.add(head);
-
-  const beak = box(0.68, 0.25, 0.48, "#f28a2b");
-  beak.position.set(0, -0.06, 0.7);
-  headGroup.add(beak);
-
-  const leftEye = box(0.13, 0.16, 0.08, "#17152b", 1);
-  const rightEye = box(0.13, 0.16, 0.08, "#17152b", 1);
-  leftEye.position.set(-0.24, 0.2, 0.52);
-  rightEye.position.set(0.24, 0.2, 0.52);
-  headGroup.add(leftEye, rightEye);
-  group.add(headGroup);
-
-  const leftWing = box(0.25, 0.62, 1.05, "#e5b92f");
-  const rightWing = box(0.25, 0.62, 1.05, "#e5b92f");
-  leftWing.position.set(-0.78, 1.26, 0);
-  rightWing.position.set(0.78, 1.26, 0);
-  group.add(leftWing, rightWing);
-
-  const leftLeg = box(0.18, 0.48, 0.18, "#e97d24");
-  const rightLeg = box(0.18, 0.48, 0.18, "#e97d24");
-  leftLeg.position.set(-0.34, 0.4, 0.1);
-  rightLeg.position.set(0.34, 0.4, 0.1);
-  group.add(leftLeg, rightLeg);
-
-  const leftFoot = box(0.4, 0.12, 0.48, "#e97d24");
-  const rightFoot = box(0.4, 0.12, 0.48, "#e97d24");
-  leftFoot.position.set(-0.34, 0.13, 0.2);
-  rightFoot.position.set(0.34, 0.13, 0.2);
-  group.add(leftFoot, rightFoot);
-
-  group.scale.setScalar(scale);
-  return { group, leftWing, rightWing, leftLeg, rightLeg, head: headGroup };
+function cylinder(
+  radiusTop: number,
+  radiusBottom: number,
+  height: number,
+  color: THREE.ColorRepresentation,
+  segments = 10,
+) {
+  const mesh = new THREE.Mesh(
+    new THREE.CylinderGeometry(radiusTop, radiusBottom, height, segments),
+    standardMaterial(color, 0.9),
+  );
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
 }
 
-function animateDuck(rig: DuckRig, phase: number, speed = 1) {
-  const swing = Math.sin(phase) * 0.65 * speed;
-  rig.leftWing.rotation.z = 0.12 + Math.sin(phase * 1.35) * 0.22 * speed;
-  rig.rightWing.rotation.z = -0.12 - Math.sin(phase * 1.35) * 0.22 * speed;
-  rig.leftLeg.rotation.x = swing;
-  rig.rightLeg.rotation.x = -swing;
-  rig.head.rotation.y = Math.sin(phase * 0.35) * 0.1;
+function createDuck(scale: number, index: number, detailed: boolean): DuckRig {
+  const group = new THREE.Group();
+  const bodyGroup = new THREE.Group();
+  group.add(bodyGroup);
+
+  const segments = detailed ? 18 : 10;
+  const palette = DUCK_COLORS[index % DUCK_COLORS.length];
+  const mainColor = palette[0];
+  const lightColor = palette[1];
+
+  const body = sphere(0.82, mainColor, segments, [1.0, 0.92, 1.18], 0.62);
+  body.position.set(0, 1.13, 0);
+  bodyGroup.add(body);
+
+  const belly = sphere(0.58, lightColor, segments, [0.86, 0.82, 0.6], 0.72);
+  belly.position.set(0, 1.02, 0.72);
+  bodyGroup.add(belly);
+
+  const headGroup = new THREE.Group();
+  headGroup.position.set(0, 2.18, 0.48);
+  const head = sphere(0.64, mainColor, segments, [1, 0.96, 1], 0.62);
+  headGroup.add(head);
+
+  const beak = sphere(0.33, "#f28a2b", detailed ? 14 : 8, [1.35, 0.48, 0.78], 0.55);
+  beak.position.set(0, -0.08, 0.62);
+  headGroup.add(beak);
+
+  if (detailed) {
+    const eyeWhiteLeft = sphere(0.13, "#ffffff", 10, [1, 1.08, 0.55], 0.45);
+    const eyeWhiteRight = eyeWhiteLeft.clone();
+    eyeWhiteLeft.position.set(-0.22, 0.17, 0.53);
+    eyeWhiteRight.position.set(0.22, 0.17, 0.53);
+    headGroup.add(eyeWhiteLeft, eyeWhiteRight);
+
+    const pupilLeft = sphere(0.067, "#17152b", 8, [1, 1.05, 0.6], 0.38);
+    const pupilRight = pupilLeft.clone();
+    pupilLeft.position.set(-0.22, 0.17, 0.625);
+    pupilRight.position.set(0.22, 0.17, 0.625);
+    headGroup.add(pupilLeft, pupilRight);
+
+    const highlightLeft = sphere(0.018, "#ffffff", 6, [1, 1, 0.5], 0.3);
+    const highlightRight = highlightLeft.clone();
+    highlightLeft.position.set(-0.198, 0.19, 0.666);
+    highlightRight.position.set(0.242, 0.19, 0.666);
+    headGroup.add(highlightLeft, highlightRight);
+  } else {
+    const leftEye = sphere(0.075, "#17152b", 7, [1, 1.1, 0.6], 0.4);
+    const rightEye = leftEye.clone();
+    leftEye.position.set(-0.22, 0.18, 0.56);
+    rightEye.position.set(0.22, 0.18, 0.56);
+    headGroup.add(leftEye, rightEye);
+  }
+  bodyGroup.add(headGroup);
+
+  const wingGeometry = new THREE.SphereGeometry(0.55, segments, Math.max(6, Math.floor(segments * 0.7)));
+  const wingMaterial = standardMaterial(index % 2 ? mainColor : "#e6b833", 0.72);
+  const leftWing = new THREE.Mesh(wingGeometry, wingMaterial);
+  const rightWing = new THREE.Mesh(wingGeometry, wingMaterial.clone());
+  leftWing.scale.set(0.34, 0.78, 1.05);
+  rightWing.scale.set(0.34, 0.78, 1.05);
+  leftWing.position.set(-0.72, 1.18, -0.02);
+  rightWing.position.set(0.72, 1.18, -0.02);
+  leftWing.rotation.z = 0.24;
+  rightWing.rotation.z = -0.24;
+  leftWing.castShadow = rightWing.castShadow = true;
+  bodyGroup.add(leftWing, rightWing);
+
+  const leftLeg = new THREE.Group();
+  const rightLeg = new THREE.Group();
+  const legMat = standardMaterial("#e97d24", 0.68);
+  const legGeo = new THREE.CylinderGeometry(0.09, 0.11, 0.46, 8);
+  const footGeo = new THREE.SphereGeometry(0.22, 10, 7);
+
+  const leftShin = new THREE.Mesh(legGeo, legMat);
+  const rightShin = new THREE.Mesh(legGeo, legMat.clone());
+  leftShin.position.y = -0.12;
+  rightShin.position.y = -0.12;
+  const leftFoot = new THREE.Mesh(footGeo, legMat.clone());
+  const rightFoot = new THREE.Mesh(footGeo, legMat.clone());
+  leftFoot.scale.set(1.15, 0.26, 1.5);
+  rightFoot.scale.set(1.15, 0.26, 1.5);
+  leftFoot.position.set(0, -0.38, 0.16);
+  rightFoot.position.set(0, -0.38, 0.16);
+  leftLeg.add(leftShin, leftFoot);
+  rightLeg.add(rightShin, rightFoot);
+  leftLeg.position.set(-0.31, 0.47, 0.04);
+  rightLeg.position.set(0.31, 0.47, 0.04);
+  bodyGroup.add(leftLeg, rightLeg);
+
+  const tail = sphere(0.27, mainColor, detailed ? 12 : 8, [0.7, 0.65, 1.25], 0.68);
+  tail.position.set(0, 1.22, -0.97);
+  tail.rotation.x = -0.45;
+  bodyGroup.add(tail);
+
+  if (detailed && index % 4 === 0) {
+    const hat = cylinder(0.42, 0.46, 0.16, index % 8 === 0 ? "#c40d02" : "#314b8c", 16);
+    hat.position.set(0, 2.82, 0.44);
+    const crown = cylinder(0.27, 0.31, 0.31, index % 8 === 0 ? "#c40d02" : "#314b8c", 16);
+    crown.position.set(0, 3.02, 0.44);
+    group.add(hat, crown);
+  }
+
+  group.scale.setScalar(scale);
+  return { group, body: bodyGroup, leftWing, rightWing, leftLeg, rightLeg, head: headGroup, tail };
+}
+
+function animateDuck(rig: DuckRig, phase: number, speed = 1, airborne = false) {
+  const gait = Math.sin(phase);
+  const fast = THREE.MathUtils.clamp(speed, 0.15, 1.7);
+  const lean = Math.min(0.22, Math.max(0, fast - 0.85) * 0.17);
+
+  rig.body.rotation.z = gait * 0.11 * fast;
+  rig.body.rotation.x = -lean + Math.abs(Math.sin(phase * 2)) * 0.025;
+  rig.body.position.y = Math.abs(Math.sin(phase * 2)) * 0.06 * fast;
+
+  rig.leftLeg.rotation.x = gait * 0.86 * fast;
+  rig.rightLeg.rotation.x = -gait * 0.86 * fast;
+  rig.leftWing.rotation.z = 0.24 + Math.sin(phase * 1.35) * 0.28 * fast;
+  rig.rightWing.rotation.z = -0.24 - Math.sin(phase * 1.35) * 0.28 * fast;
+  rig.leftWing.rotation.x = airborne ? -0.7 + Math.sin(phase * 2.2) * 0.45 : Math.sin(phase) * 0.12;
+  rig.rightWing.rotation.x = airborne ? 0.7 - Math.sin(phase * 2.2) * 0.45 : -Math.sin(phase) * 0.12;
+  rig.head.rotation.y = Math.sin(phase * 0.38) * 0.12;
+  rig.head.rotation.z = -gait * 0.035;
+  rig.tail.rotation.y = Math.sin(phase * 1.6) * 0.25;
 }
 
 function playRaceSound(kind: "start" | "event" | "finish") {
@@ -193,13 +312,14 @@ export function DuckRaceGame() {
   const runningRef = useRef(false);
   const startedAtRef = useRef(0);
   const racersRef = useRef<Racer[]>([]);
-  const winnerIndexRef = useRef<number | null>(null);
   const targetOrderRef = useRef<number[]>([]);
   const finishOrderRef = useRef<RaceResult[]>([]);
   const nextEventAtRef = useRef(0);
   const lastEventIdRef = useRef("");
   const mutedRef = useRef(false);
   const finalSprintShownRef = useRef(false);
+  const focusIndexRef = useRef<number | null>(null);
+  const focusUntilRef = useRef(0);
 
   const [draft, setDraft] = useState("");
   const [names, setNames] = useState<string[]>([]);
@@ -210,7 +330,6 @@ export function DuckRaceGame() {
   const [rankings, setRankings] = useState<string[]>([]);
   const [result, setResult] = useState<RaceResult[]>([]);
   const [winnerTitle, setWinnerTitle] = useState("");
-  const [raceId, setRaceId] = useState(0);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -247,15 +366,17 @@ export function DuckRaceGame() {
   }, [draft]);
 
   const startRace = useCallback(() => {
-    if (runningRef.current || names.length < 2) return;
+    if (runningRef.current || names.length < 2 || racersRef.current.length !== names.length) return;
     const order = shuffle(names.map((_, index) => index));
     targetOrderRef.current = order;
-    winnerIndexRef.current = order[0];
     finishOrderRef.current = [];
     startedAtRef.current = performance.now();
     nextEventAtRef.current = 5200 + Math.random() * 1800;
     lastEventIdRef.current = "";
     finalSprintShownRef.current = false;
+    focusIndexRef.current = null;
+    focusUntilRef.current = 0;
+
     racersRef.current.forEach((racer) => {
       racer.progress = 0;
       racer.finishedAt = null;
@@ -266,10 +387,15 @@ export function DuckRaceGame() {
       racer.dramaUntil = 0;
       racer.effectText = "";
       racer.rig.group.position.z = 0;
+      racer.rig.group.position.y = 0;
+      racer.rig.group.rotation.set(0, Math.PI, 0);
+      racer.rig.body.scale.set(1, 1, 1);
     });
+
     runningRef.current = true;
     setRunning(true);
     setResult([]);
+    setRankings([]);
     setEventText({ title: "ĐẠI LOẠN AO LÀNG!", subtitle: "Không phải con vịt nhanh nhất sẽ thắng.", emoji: "🦆" });
     window.setTimeout(() => setEventText(null), 1900);
     if (!mutedRef.current) playRaceSound("start");
@@ -288,6 +414,7 @@ export function DuckRaceGame() {
 
     const byProgress = [...racers].sort((a, b) => b.progress - a.progress);
     const randomRacer = () => racers[randomInt(racers.length)];
+    let focus: Racer | null = null;
 
     if (event.id === "bread") {
       const victims = shuffle(racers).slice(0, Math.max(1, Math.ceil(racers.length * 0.18)));
@@ -295,18 +422,21 @@ export function DuckRaceGame() {
         racer.slowUntil = now + 2600;
         racer.effectText = "🥖 Bỏ đua đi ăn";
       });
+      focus = victims[0] ?? null;
     }
 
     if (event.id === "ancestors") {
       const racer = byProgress[byProgress.length - 1];
       racer.boostUntil = now + 3400;
       racer.effectText = "🔥 Ông bà đang gánh";
+      focus = racer;
     }
 
     if (event.id === "traffic") {
       const racer = byProgress[0];
       racer.slowUntil = now + 2800;
       racer.effectText = "🚨 Tấp vào lề!";
+      focus = racer;
     }
 
     if (event.id === "ufo") {
@@ -314,18 +444,21 @@ export function DuckRaceGame() {
       racer.ufoUntil = now + 2400;
       racer.slowUntil = now + 1900;
       racer.effectText = "👽 Đang được UFO chăm sóc";
+      focus = racer;
     }
 
     if (event.id === "slipper") {
       const racer = randomRacer();
       racer.boostUntil = now + 3600;
       racer.effectText = "🩴 Dép tổ ong +100 uy tín";
+      focus = racer;
     }
 
     if (event.id === "nap") {
       const racer = randomRacer();
       racer.napUntil = now + 2600;
       racer.effectText = "😴 5 phút nữa chạy";
+      focus = racer;
     }
 
     if (event.id === "drama") {
@@ -334,6 +467,12 @@ export function DuckRaceGame() {
         racer.dramaUntil = now + 2200;
         racer.effectText = "💢 Đang cãi nhau";
       });
+      focus = pair[0] ?? null;
+    }
+
+    if (focus) {
+      focusIndexRef.current = focus.index;
+      focusUntilRef.current = now + 2200;
     }
   }, []);
 
@@ -344,69 +483,100 @@ export function DuckRaceGame() {
     if (!mount || !labelsLayer) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#78c7ef");
-    scene.fog = new THREE.Fog("#bce8ff", 38, 120);
+    scene.background = new THREE.Color("#91d9f4");
+    scene.fog = new THREE.Fog("#c9effa", 45, 132);
 
-    const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 180);
-    camera.position.set(0, 12, 24);
-    camera.lookAt(0, 1.4, -10);
+    const camera = new THREE.PerspectiveCamera(43, 1, 0.1, 200);
+    camera.position.set(0, 11, 24);
+    camera.lookAt(0, 1.5, -10);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.shadowMap.enabled = names.length <= 55;
+    const renderer = new THREE.WebGLRenderer({ antialias: names.length < 100, powerPreference: "high-performance" });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, names.length > 70 ? 1.35 : 1.8));
+    renderer.shadowMap.enabled = names.length <= 48;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
     renderer.domElement.className = "duck-three-canvas";
     mount.appendChild(renderer.domElement);
 
-    scene.add(new THREE.HemisphereLight("#fff9d9", "#618851", 2.8));
-    const sun = new THREE.DirectionalLight("#fff4c8", 4.2);
-    sun.position.set(-14, 26, 12);
-    sun.castShadow = names.length <= 55;
-    sun.shadow.mapSize.set(1024, 1024);
-    sun.shadow.camera.left = -28;
-    sun.shadow.camera.right = 28;
+    scene.add(new THREE.HemisphereLight("#fff9df", "#547c43", 2.7));
+    const sun = new THREE.DirectionalLight("#fff0c2", 4.4);
+    sun.position.set(-16, 28, 15);
+    sun.castShadow = names.length <= 48;
+    sun.shadow.mapSize.set(names.length > 30 ? 1024 : 1536, names.length > 30 ? 1024 : 1536);
+    sun.shadow.camera.left = -30;
+    sun.shadow.camera.right = 30;
     sun.shadow.camera.top = 45;
     sun.shadow.camera.bottom = -45;
     scene.add(sun);
 
+    const fill = new THREE.DirectionalLight("#b7e5ff", 1.35);
+    fill.position.set(12, 10, -20);
+    scene.add(fill);
+
     const count = names.length;
-    const trackWidth = THREE.MathUtils.clamp(13 + Math.sqrt(count) * 1.65, 17, 30);
-    const duckScale = count > 70 ? 0.56 : count > 45 ? 0.65 : count > 25 ? 0.76 : 0.88;
+    const trackWidth = THREE.MathUtils.clamp(15 + Math.sqrt(count) * 1.9, 18, 42);
+    const duckScale = THREE.MathUtils.clamp(1.02 - Math.log2(Math.max(2, count)) * 0.085, 0.42, 0.82);
+    const detailedDucks = count <= 64;
 
     const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(120, 170),
-      new THREE.MeshStandardMaterial({ color: "#77a94f", roughness: 1 }),
+      new THREE.PlaneGeometry(130, 185),
+      new THREE.MeshStandardMaterial({ color: "#78af58", roughness: 1 }),
     );
     ground.rotation.x = -Math.PI / 2;
-    ground.position.set(0, -0.06, -35);
+    ground.position.set(0, -0.08, -38);
     ground.receiveShadow = true;
     scene.add(ground);
 
     const track = new THREE.Mesh(
-      new THREE.PlaneGeometry(trackWidth, TRACK_LENGTH + 18),
-      new THREE.MeshStandardMaterial({ color: "#d9b776", roughness: 0.95 }),
+      new THREE.PlaneGeometry(trackWidth, TRACK_LENGTH + 19),
+      new THREE.MeshStandardMaterial({ color: "#d7a45f", roughness: 0.96 }),
     );
     track.rotation.x = -Math.PI / 2;
     track.position.set(0, 0.02, -TRACK_LENGTH / 2 + 4);
     track.receiveShadow = true;
     scene.add(track);
 
+    const trackEdgeLeft = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.42, TRACK_LENGTH + 18),
+      new THREE.MeshStandardMaterial({ color: "#efd184", roughness: 0.9 }),
+    );
+    const trackEdgeRight = trackEdgeLeft.clone();
+    trackEdgeLeft.rotation.x = trackEdgeRight.rotation.x = -Math.PI / 2;
+    trackEdgeLeft.position.set(-trackWidth / 2 + 0.18, 0.035, -TRACK_LENGTH / 2 + 4);
+    trackEdgeRight.position.set(trackWidth / 2 - 0.18, 0.035, -TRACK_LENGTH / 2 + 4);
+    scene.add(trackEdgeLeft, trackEdgeRight);
+
     const mud = new THREE.Mesh(
-      new THREE.PlaneGeometry(trackWidth - 1, 10),
-      new THREE.MeshStandardMaterial({ color: "#8a6044", roughness: 1 }),
+      new THREE.PlaneGeometry(trackWidth - 0.9, 10),
+      new THREE.MeshStandardMaterial({ color: "#70472e", roughness: 0.82 }),
     );
     mud.rotation.x = -Math.PI / 2;
-    mud.position.set(0, 0.035, -26);
+    mud.position.set(0, 0.045, -27);
     scene.add(mud);
 
-    const water = new THREE.Mesh(
-      new THREE.PlaneGeometry(trackWidth - 1, 9),
-      new THREE.MeshStandardMaterial({ color: "#50a9dc", roughness: 0.45, metalness: 0.05 }),
-    );
+    const waterMaterial = new THREE.MeshStandardMaterial({
+      color: "#42bfd1",
+      roughness: 0.22,
+      metalness: 0.05,
+      transparent: true,
+      opacity: 0.88,
+    });
+    const water = new THREE.Mesh(new THREE.PlaneGeometry(trackWidth - 0.9, 9), waterMaterial);
     water.rotation.x = -Math.PI / 2;
-    water.position.set(0, 0.04, -49);
+    water.position.set(0, 0.055, -51);
     scene.add(water);
+
+    const bridgeZ = -39;
+    const bridge = box(trackWidth - 2.2, 0.2, 5.2, "#9a673d", 0.9);
+    bridge.position.set(0, 0.11, bridgeZ);
+    scene.add(bridge);
+    for (let x = -trackWidth / 2 + 1.4; x <= trackWidth / 2 - 1.4; x += 1.7) {
+      const seam = box(0.07, 0.025, 5.0, "#71462c", 0.95);
+      seam.position.set(x, 0.23, bridgeZ);
+      scene.add(seam);
+    }
 
     const finishLine = new THREE.Group();
     const finishZ = -TRACK_LENGTH + 5;
@@ -417,44 +587,60 @@ export function DuckRaceGame() {
     }
     scene.add(finishLine);
 
-    const archLeft = box(0.5, 5.2, 0.5, "#d63b38");
-    const archRight = box(0.5, 5.2, 0.5, "#d63b38");
-    const archTop = box(trackWidth + 1, 0.65, 0.7, "#d63b38");
-    archLeft.position.set(-trackWidth / 2 - 0.5, 2.6, finishZ);
-    archRight.position.set(trackWidth / 2 + 0.5, 2.6, finishZ);
-    archTop.position.set(0, 5.1, finishZ);
+    const archLeft = cylinder(0.28, 0.34, 5.2, "#c40d02", 12);
+    const archRight = archLeft.clone();
+    const archTop = box(trackWidth + 1.4, 0.7, 0.78, "#c40d02", 0.72);
+    archLeft.position.set(-trackWidth / 2 - 0.55, 2.6, finishZ);
+    archRight.position.set(trackWidth / 2 + 0.55, 2.6, finishZ);
+    archTop.position.set(0, 5.05, finishZ);
     scene.add(archLeft, archRight, archTop);
 
-    const signMaterial = new THREE.MeshStandardMaterial({ color: "#ffdf4b", roughness: 0.8 });
-    const startBar = new THREE.Mesh(new THREE.BoxGeometry(trackWidth + 1, 0.35, 0.5), signMaterial);
+    const startBar = box(trackWidth + 1.4, 0.46, 0.58, "#f59814", 0.74);
     startBar.position.set(0, 4.2, 3.8);
     scene.add(startBar);
-    const startLeft = box(0.45, 4.2, 0.45, "#ffdf4b");
-    const startRight = box(0.45, 4.2, 0.45, "#ffdf4b");
-    startLeft.position.set(-trackWidth / 2 - 0.4, 2.1, 3.8);
-    startRight.position.set(trackWidth / 2 + 0.4, 2.1, 3.8);
+    const startLeft = cylinder(0.23, 0.3, 4.2, "#f59814", 12);
+    const startRight = startLeft.clone();
+    startLeft.position.set(-trackWidth / 2 - 0.42, 2.1, 3.8);
+    startRight.position.set(trackWidth / 2 + 0.42, 2.1, 3.8);
     scene.add(startLeft, startRight);
 
-    for (let i = 0; i < 42; i += 1) {
+    const treeCount = count > 90 ? 22 : 34;
+    for (let i = 0; i < treeCount; i += 1) {
       const side = i % 2 === 0 ? -1 : 1;
-      const z = 5 - (i / 42) * (TRACK_LENGTH + 15);
-      const trunk = box(0.28, 1.2, 0.28, "#7b4c2d");
-      trunk.position.set(side * (trackWidth / 2 + 2.5 + (i % 3) * 0.8), 0.6, z);
-      const crown = box(1.3, 1.0, 1.3, i % 4 === 0 ? "#5c9b45" : "#6caf51");
-      crown.position.set(trunk.position.x, 1.55, z);
-      scene.add(trunk, crown);
+      const z = 7 - (i / treeCount) * (TRACK_LENGTH + 18);
+      const x = side * (trackWidth / 2 + 3.0 + (i % 4) * 0.9);
+      const trunk = cylinder(0.18, 0.28, 1.55, "#7b4c2d", 8);
+      trunk.position.set(x, 0.75, z);
+      const crownColor = i % 4 === 0 ? "#5b9d49" : "#70b856";
+      const crownA = sphere(0.85, crownColor, 9, [1.05, 0.92, 1.0], 0.92);
+      const crownB = sphere(0.62, crownColor, 9, [1.0, 0.85, 1.0], 0.92);
+      crownA.position.set(x, 1.82, z);
+      crownB.position.set(x + side * 0.45, 1.62, z + 0.08);
+      scene.add(trunk, crownA, crownB);
     }
 
-    const laneGap = Math.min(1.5, (trackWidth - 2.2) / Math.max(1, count));
+    for (let i = 0; i < 10; i += 1) {
+      const cloud = new THREE.Group();
+      const cloudMat = standardMaterial("#ffffff", 1);
+      for (let c = 0; c < 3; c += 1) {
+        const puff = new THREE.Mesh(new THREE.SphereGeometry(1.0 - c * 0.12, 9, 6), cloudMat.clone());
+        puff.scale.set(1.4, 0.7, 0.65);
+        puff.position.set(c * 1.15, c === 1 ? 0.25 : 0, 0);
+        cloud.add(puff);
+      }
+      cloud.position.set((i % 2 ? 1 : -1) * (12 + (i % 3) * 7), 11 + (i % 4) * 1.8, 2 - i * 11);
+      scene.add(cloud);
+    }
+
+    const columns = Math.max(1, Math.floor((trackWidth - 2.2) / Math.max(0.78, duckScale * 1.65)));
     const racers: Racer[] = names.map((name, index) => {
-      const rig = createDuck(duckScale);
-      const columns = Math.max(1, Math.floor((trackWidth - 2) / Math.max(0.9, duckScale * 1.9)));
+      const rig = createDuck(duckScale, index, detailedDucks);
       const row = Math.floor(index / columns);
       const col = index % columns;
       const usedCols = Math.min(columns, count - row * columns);
       const xGap = (trackWidth - 2) / Math.max(1, usedCols);
       const x = -trackWidth / 2 + 1 + xGap * (col + 0.5);
-      const z = 2.2 + row * 1.35;
+      const z = 2.2 + row * Math.max(0.78, duckScale * 1.7);
       rig.group.position.set(x, 0, z);
       rig.group.rotation.y = Math.PI;
       scene.add(rig.group);
@@ -495,6 +681,7 @@ export function DuckRaceGame() {
     const clock = new THREE.Clock();
     let animation = 0;
     let lastHudAt = 0;
+    let visibleIndexes = new Set<number>();
 
     const resize = () => {
       const width = Math.max(1, mount.clientWidth);
@@ -507,18 +694,24 @@ export function DuckRaceGame() {
     observer.observe(mount);
     resize();
 
-    const projectLabel = (element: HTMLDivElement, position: THREE.Vector3, offsetY: number) => {
+    const projectLabel = (element: HTMLDivElement, position: THREE.Vector3, offsetY: number, visible: boolean) => {
+      if (!visible) {
+        element.style.opacity = "0";
+        return;
+      }
       const p = position.clone();
       p.y += offsetY;
       p.project(camera);
-      if (p.z < -1 || p.z > 1 || Math.abs(p.x) > 1.2 || Math.abs(p.y) > 1.2) {
+      if (p.z < -1 || p.z > 1 || Math.abs(p.x) > 1.15 || Math.abs(p.y) > 1.15) {
         element.style.opacity = "0";
         return;
       }
       const x = (p.x * 0.5 + 0.5) * mount.clientWidth;
       const y = (-p.y * 0.5 + 0.5) * mount.clientHeight;
+      const depthScale = THREE.MathUtils.clamp(1.12 - p.z * 0.25, 0.72, 1.05);
       element.style.opacity = "1";
-      element.style.transform = "translate3d(" + x + "px," + y + "px,0) translate(-50%,-100%)";
+      element.style.transform =
+        "translate3d(" + x + "px," + y + "px,0) translate(-50%,-100%) scale(" + depthScale + ")";
     };
 
     const finishRaceIfNeeded = () => {
@@ -529,12 +722,15 @@ export function DuckRaceGame() {
       setResult(final);
       setWinnerTitle(WINNER_TITLES[randomInt(WINNER_TITLES.length)]);
       setEventText(null);
+      focusIndexRef.current = null;
       if (!mutedRef.current) playRaceSound("finish");
     };
 
     const animate = () => {
       const dt = Math.min(0.035, clock.getDelta());
       const now = performance.now();
+
+      waterMaterial.opacity = 0.84 + Math.sin(now * 0.0014) * 0.04;
 
       if (runningRef.current) {
         const elapsed = now - startedAtRef.current;
@@ -560,32 +756,37 @@ export function DuckRaceGame() {
           if (now < racer.ufoUntil) multiplier *= 0.22;
 
           if (finalSprint) {
-            const rank = plannedRank;
-            if (rank === 0) multiplier *= 2.45;
-            else if (rank === 1) multiplier *= 1.32;
-            else if (rank === 2) multiplier *= 1.12;
-            else multiplier *= THREE.MathUtils.clamp(0.92 - rank * 0.004, 0.68, 0.9);
-            racer.effectText = rank === 0 ? "🔥 HÀO QUANG NHÂN VẬT CHÍNH" : "";
+            if (plannedRank === 0) multiplier *= 2.45;
+            else if (plannedRank === 1) multiplier *= 1.32;
+            else if (plannedRank === 2) multiplier *= 1.12;
+            else multiplier *= THREE.MathUtils.clamp(0.92 - plannedRank * 0.004, 0.68, 0.9);
+            racer.effectText = plannedRank === 0 ? "🔥 HÀO QUANG NHÂN VẬT CHÍNH" : racer.effectText;
           }
 
           const terrainZ = -racer.progress;
-          if (terrainZ < -21 && terrainZ > -31) multiplier *= 0.84;
-          if (terrainZ < -45 && terrainZ > -54) multiplier *= 0.91;
+          if (terrainZ < -22 && terrainZ > -32) multiplier *= 0.84;
+          if (terrainZ < -47 && terrainZ > -56) multiplier *= 0.91;
 
           racer.progress += racer.baseSpeed * multiplier * dt;
           racer.phase += dt * (8.2 + racer.baseSpeed * 1.6) * Math.max(0.15, multiplier);
-          animateDuck(racer.rig, racer.phase, Math.min(1.3, multiplier));
+
+          const airborne = now < racer.ufoUntil;
+          animateDuck(racer.rig, racer.phase, Math.min(1.5, multiplier), airborne);
 
           const weave = Math.sin(racer.phase * 0.22 + racer.index) * Math.min(0.38, trackWidth / 50);
           racer.rig.group.position.x = THREE.MathUtils.lerp(racer.rig.group.position.x, racer.targetX + weave, dt * 2.4);
           racer.rig.group.position.z = 2.2 - racer.progress;
-          racer.rig.group.position.y = Math.abs(Math.sin(racer.phase * 2)) * 0.08;
 
-          if (now < racer.ufoUntil) {
+          const stepBounce = Math.abs(Math.sin(racer.phase * 2)) * 0.075 * Math.min(1.2, multiplier);
+          racer.rig.group.position.y = stepBounce;
+          const squash = 1 - stepBounce * 0.16;
+          racer.rig.body.scale.set(1 + stepBounce * 0.04, squash, 1 + stepBounce * 0.03);
+
+          if (airborne) {
             racer.rig.group.position.y += 2.2 + Math.sin(now * 0.009) * 0.7;
             racer.rig.group.rotation.y += dt * 3.5;
           } else {
-            racer.rig.group.rotation.y = Math.PI + weave * 0.25;
+            racer.rig.group.rotation.y = Math.PI + weave * 0.2;
           }
 
           if (racer.progress >= TRACK_LENGTH - 5 && racer.finishedAt === null) {
@@ -602,33 +803,63 @@ export function DuckRaceGame() {
         }
 
         finishRaceIfNeeded();
+      } else {
+        racers.forEach((racer) => {
+          racer.phase += dt * 2.0;
+          animateDuck(racer.rig, racer.phase, 0.24, false);
+          racer.rig.group.position.y = Math.sin(racer.phase * 0.65 + racer.index) * 0.025;
+        });
       }
 
       const active = racers.filter((racer) => racer.finishedAt === null);
-      const leader = active.length
-        ? active.reduce((best, racer) => racer.progress > best.progress ? racer : best, active[0])
-        : racers[0];
+      const sortedActive = [...active].sort((a, b) => b.progress - a.progress);
+      const leader = sortedActive[0] ?? racers[0];
 
       if (leader) {
-        const followZ = THREE.MathUtils.clamp(leader.rig.group.position.z + 18, -TRACK_LENGTH + 18, 24);
-        const targetCamera = new THREE.Vector3(0, 11.5, followZ);
-        if (runningRef.current && leader.progress > TRACK_LENGTH * 0.82) {
-          targetCamera.y = 8.2;
-          targetCamera.z = followZ + 2;
+        const focusRacer = focusIndexRef.current !== null
+          ? racers.find((racer) => racer.index === focusIndexRef.current)
+          : undefined;
+        if (focusRacer && now < focusUntilRef.current) {
+          const cinematicCamera = new THREE.Vector3(
+            focusRacer.rig.group.position.x * 0.35,
+            6.5,
+            focusRacer.rig.group.position.z + 10.5,
+          );
+          camera.position.lerp(cinematicCamera, Math.min(1, dt * 2.8));
+          camera.lookAt(focusRacer.rig.group.position.x, 1.35, focusRacer.rig.group.position.z - 1.5);
+        } else {
+          focusIndexRef.current = null;
+          const topGroup = sortedActive.slice(0, Math.min(6, sortedActive.length));
+          const groupZ = topGroup.length
+            ? topGroup.reduce((sum, racer) => sum + racer.rig.group.position.z, 0) / topGroup.length
+            : leader.rig.group.position.z;
+          const progressSpread = topGroup.length > 1
+            ? Math.max(...topGroup.map((racer) => racer.progress)) - Math.min(...topGroup.map((racer) => racer.progress))
+            : 0;
+          const followZ = THREE.MathUtils.clamp(groupZ + 18 + progressSpread * 0.35, -TRACK_LENGTH + 18, 25);
+          const targetCamera = new THREE.Vector3(0, 10.2 + Math.min(4, progressSpread * 0.22), followZ);
+          if (runningRef.current && leader.progress > TRACK_LENGTH * 0.82) {
+            targetCamera.y = 7.8;
+            targetCamera.z = followZ + 1.8;
+          }
+          camera.position.lerp(targetCamera, Math.min(1, dt * 1.55));
+          camera.lookAt(0, 1.35, groupZ - 7.2);
         }
-        camera.position.lerp(targetCamera, Math.min(1, dt * 1.45));
-        camera.lookAt(0, 1.4, leader.rig.group.position.z - 8);
       }
 
       racers.forEach((racer, index) => {
-        projectLabel(labels[index], racer.rig.group.position, duckScale * 4.2);
+        const showName = count <= 36
+          || visibleIndexes.has(racer.index)
+          || racer.effectText.length > 0
+          || racer.finishedAt !== null && finishOrderRef.current.findIndex((item) => item.index === racer.index) < 3;
+        projectLabel(labels[index], racer.rig.group.position, duckScale * 3.65, showName);
         effectLabels[index].textContent = racer.effectText;
-        if (racer.effectText) projectLabel(effectLabels[index], racer.rig.group.position, duckScale * 5.4);
+        if (racer.effectText) projectLabel(effectLabels[index], racer.rig.group.position, duckScale * 4.75, true);
         else effectLabels[index].style.opacity = "0";
 
         if (
           racer.effectText &&
-          performance.now() > Math.max(racer.boostUntil, racer.slowUntil, racer.napUntil, racer.ufoUntil, racer.dramaUntil) &&
+          now > Math.max(racer.boostUntil, racer.slowUntil, racer.napUntil, racer.ufoUntil, racer.dramaUntil) &&
           !racer.effectText.startsWith("🏁") &&
           !racer.effectText.includes("HÀO QUANG")
         ) {
@@ -636,18 +867,17 @@ export function DuckRaceGame() {
         }
       });
 
-      if (now - lastHudAt > 450) {
+      if (now - lastHudAt > 420) {
         lastHudAt = now;
-        const top = [...racers]
-          .sort((a, b) => {
-            if (a.finishedAt !== null && b.finishedAt !== null) return a.finishedAt - b.finishedAt;
-            if (a.finishedAt !== null) return -1;
-            if (b.finishedAt !== null) return 1;
-            return b.progress - a.progress;
-          })
-          .slice(0, 5)
-          .map((racer) => racer.name);
-        setRankings(top);
+        const ordered = [...racers].sort((a, b) => {
+          if (a.finishedAt !== null && b.finishedAt !== null) return a.finishedAt - b.finishedAt;
+          if (a.finishedAt !== null) return -1;
+          if (b.finishedAt !== null) return 1;
+          return b.progress - a.progress;
+        });
+        const top = ordered.slice(0, 5);
+        visibleIndexes = new Set(ordered.slice(0, count > 70 ? 6 : 10).map((racer) => racer.index));
+        setRankings(top.map((racer) => racer.name));
       }
 
       renderer.render(scene, camera);
@@ -657,6 +887,7 @@ export function DuckRaceGame() {
     animation = window.requestAnimationFrame(animate);
 
     return () => {
+      runningRef.current = false;
       window.cancelAnimationFrame(animation);
       observer.disconnect();
       labels.forEach((label) => label.remove());
@@ -670,14 +901,14 @@ export function DuckRaceGame() {
       });
       renderer.dispose();
       renderer.domElement.remove();
+      racersRef.current = [];
     };
-  }, [entered, names, raceId, triggerEvent]);
+  }, [entered, names, triggerEvent]);
 
   const raceAgain = useCallback(() => {
     setResult([]);
     setRankings([]);
-    setRaceId((value) => value + 1);
-    window.setTimeout(() => startRace(), 100);
+    window.setTimeout(() => startRace(), 80);
   }, [startRace]);
 
   if (!entered) {
@@ -691,7 +922,7 @@ export function DuckRaceGame() {
             <div>
               <p>RANDOM NAME · DUCK RACE 3D</p>
               <h1>Đại Loạn Ao Làng</h1>
-              <small>Không phải con vịt nhanh nhất sẽ thắng.</small>
+              <small>Đua vịt 3D hoạt hình — càng đông càng loạn.</small>
             </div>
           </div>
           <div className="random-input-heading">
@@ -701,9 +932,14 @@ export function DuckRaceGame() {
           <textarea
             autoFocus
             onChange={(event) => setDraft(event.target.value)}
-            placeholder={"Minh Triết\nGia Vỹ\nNhất Phi\nNgọc Anh\n..."}
+            placeholder={"[Học sinh 1]\n[Học sinh 2]\n[Học sinh 3]\n[Học sinh 4]\n..."}
             value={draft}
           />
+          <div className="duck-setup-notes">
+            <span>✨ Vịt tròn 3D</span>
+            <span>🎥 Camera bám nhóm dẫn đầu</span>
+            <span>👥 Tự tối ưu lớp đông</span>
+          </div>
           {error && <p className="form-error" role="alert">{error}</p>}
           <button className="duck-enter-button" onClick={enterRace} type="button">
             Vào trường đua <span>→</span>
@@ -723,6 +959,17 @@ export function DuckRaceGame() {
         </div>
         <div className="duck-top-actions">
           <button onClick={() => setMuted((current) => !current)} type="button">{muted ? "🔇" : "🔊"}</button>
+          <button
+            onClick={() => {
+              const stage = mountRef.current?.parentElement;
+              if (!stage) return;
+              if (document.fullscreenElement) void document.exitFullscreen();
+              else void stage.requestFullscreen();
+            }}
+            type="button"
+          >
+            ⛶ Toàn màn hình
+          </button>
           <button disabled={running} onClick={() => setEntered(false)} type="button">Sửa danh sách</button>
         </div>
       </header>
@@ -753,9 +1000,7 @@ export function DuckRaceGame() {
           </div>
         )}
 
-        {running && (
-          <div className="duck-live-pill"><i /> CUỘC ĐUA ĐANG DIỄN RA</div>
-        )}
+        {running && <div className="duck-live-pill"><i /> CUỘC ĐUA ĐANG DIỄN RA</div>}
 
         {result.length > 0 && (
           <div className="duck-result-screen" role="dialog" aria-modal="true">
