@@ -202,7 +202,7 @@ export function PlayerGame({ code }: { code: string }) {
     ? { answer: room.myAnswer, totalScore: room.me?.score ?? 0 }
     : null);
 
-  if (!credentials) return <main className="center-message"><h1>Bạn chưa vào phòng</h1><p>Nhập mã phòng và tên ở trang chủ trước nhé.</p><Link href="/">Vào trang chủ</Link></main>;
+  if (!credentials) return <main className="center-message"><h1>Bạn chưa vào phòng</h1><p>Nhập mã phòng và tên ở trang chủ trước nhé.</p><Link href="/cyber-city">Vào Cyber City</Link></main>;
   if (!room) return <main className="center-message"><div className="spinner" /><p>Đang vào Cyber City...</p>{error && <span>{error}</span>}</main>;
 
   return (
@@ -240,7 +240,7 @@ export function PlayerGame({ code }: { code: string }) {
         </section>
       )}
 
-      {room.status === "finished" && <section className="player-finish"><p className="screen-kicker">KẾT THÚC</p><h1>Cyber City đã an toàn!</h1><Podium players={room.leaderboard} /><div className="my-final-rank"><GameAvatar avatarId={room.me?.avatarId} /><span>Hạng #{room.me?.rank}</span><b>{room.me?.score.toLocaleString("vi-VN")} điểm</b><small>🎯 {room.me?.hitsLanded ?? 0} trúng · 💥 {room.me?.hitsReceived ?? 0} lần bị ném</small></div><Link href="/">Chơi phòng khác</Link></section>}
+      {room.status === "finished" && <section className="player-finish"><p className="screen-kicker">KẾT THÚC</p><h1>Cyber City đã an toàn!</h1><Podium players={room.leaderboard} /><div className="my-final-rank"><GameAvatar avatarId={room.me?.avatarId} /><span>Hạng #{room.me?.rank}</span><b>{room.me?.score.toLocaleString("vi-VN")} điểm</b><small>🎯 {room.me?.hitsLanded ?? 0} trúng · 💥 {room.me?.hitsReceived ?? 0} lần bị ném</small></div><Link href="/cyber-city">Chơi phòng khác</Link></section>}
       {incomingHit && <div className="hit-overlay" role="status"><div className="projectile">{throwItemFor(incomingHit.itemId).emoji}</div><div className="splat">{throwItemFor(incomingHit.itemId).splat}</div><GameAvatar avatarId={room.me?.avatarId} size="large" hit /><h2>{incomingHit.fromName} vừa ném trúng bạn!</h2><p>Không sao, câu sau phục thù nhé 😵‍💫</p></div>}
       {error && <div className="toast-error" role="alert">{error}</div>}
     </main>
