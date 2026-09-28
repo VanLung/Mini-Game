@@ -566,8 +566,11 @@ export function PoseQuizDisplay() {
     if (!id) {
       setError("Thiếu mã phiên Presenter Mode.");
       setPhaseSafe("error");
-      return;
     }
+  }, [setPhaseSafe]);
+
+  useEffect(() => {
+    if (!sessionId || !questions.length) return;
 
     if (!("BroadcastChannel" in window)) {
       setError("Trình duyệt không hỗ trợ BroadcastChannel. Hãy dùng Chrome/Edge mới.");
@@ -575,7 +578,7 @@ export function PoseQuizDisplay() {
       return;
     }
 
-    const channel = new BroadcastChannel(poseChannelName(id));
+    const channel = new BroadcastChannel(poseChannelName(sessionId));
     channelRef.current = channel;
 
     channel.onmessage = (event: MessageEvent<TeacherCommand>) => {
@@ -585,8 +588,7 @@ export function PoseQuizDisplay() {
       if (command.type === "sync") {
         if (
           phaseRef.current === "booting" ||
-          phaseRef.current === "standby" ||
-          phaseRef.current === "error"
+          phaseRef.current === "standby"
         ) {
           prepareQuestion(command.index);
         }
@@ -624,8 +626,10 @@ export function PoseQuizDisplay() {
     destroyVision,
     pause,
     prepareQuestion,
+    questions.length,
     resetSession,
     resume,
+    sessionId,
     setPhaseSafe,
     startQuestion,
   ]);
