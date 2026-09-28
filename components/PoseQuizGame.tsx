@@ -219,6 +219,9 @@ export function PoseQuizGame() {
   const questionDeadlineRef = useRef(0);
   const lockedRef = useRef(false);
   const tickSecondRef = useRef(-1);
+  const submitAnswerRef = useRef<
+    ((selected: AnswerKey | null, timeout?: boolean) => void) | null
+  >(null);
 
   const [questions, setQuestions] = useState<PoseQuestion[]>(DEFAULT_QUESTIONS);
   const [screen, setScreen] = useState<"studio" | "play" | "finished">("studio");
@@ -404,6 +407,10 @@ export function PoseQuizGame() {
     [beginQuestion, currentIndex, questions, screen, stopVision, streak],
   );
 
+  useEffect(() => {
+    submitAnswerRef.current = submitAnswer;
+  }, [submitAnswer]);
+
   const startVision = useCallback(async () => {
     if (!saveQuestions()) return;
 
@@ -479,7 +486,7 @@ export function PoseQuizGame() {
               const progress = Math.min(1, (now - candidateRef.current.since) / HOLD_MS);
               setHoldProgress(progress);
               if (progress >= 1 && !lockedRef.current && !feedback) {
-                submitAnswer(answer);
+                submitAnswerRef.current?.(answer);
                 candidateRef.current = { answer: null, since: 0 };
                 setHoldProgress(0);
               }
