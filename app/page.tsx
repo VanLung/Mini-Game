@@ -19,6 +19,15 @@ const games = [
     className: "hub-card random",
     status: "Mới",
   },
+  {
+    href: "/duck-race",
+    eyebrow: "RANDOM NAME · DUCK RACE 3D",
+    title: "Đại Loạn Ao Làng",
+    description: "Đua vịt 3D đầy drama: bánh mì, UFO, dép tổ ong, CSGT ao làng và màn nước rút không ai được tin ai.",
+    icon: "🦆",
+    className: "hub-card duck",
+    status: "Mới",
+  },
 ];
 
 export default function Home() {
