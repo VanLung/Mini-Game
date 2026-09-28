@@ -236,6 +236,7 @@ export function PoseQuizDisplay() {
   const busyRef = useRef(false);
   const consecutiveErrorsRef = useRef(0);
   const lastInferenceAtRef = useRef(0);
+  const lastDiagnosticAtRef = useRef(0);
   const candidateRef = useRef<{ answer: AnswerKey | null; since: number }>({
     answer: null,
     since: 0,
@@ -420,8 +421,26 @@ export function PoseQuizDisplay() {
           setInferenceMs(Math.round(results.speed.inference));
         }
 
-        const answer = classifyPose(choosePrimaryPose(results));
+        const primaryPose = choosePrimaryPose(results);
+        const answer = classifyPose(primaryPose);
         setPoseAnswer(answer);
+
+        const diagnosticNow = performance.now();
+        if (diagnosticNow - lastDiagnosticAtRef.current >= 1000) {
+          lastDiagnosticAtRef.current = diagnosticNow;
+          const poseCount = results.keypoints?.length ?? 0;
+          const leftWrist = primaryPose?.[9]?.[2] ?? 0;
+          const rightWrist = primaryPose?.[10]?.[2] ?? 0;
+          setCameraStatus(
+            "Camera sẵn sàng · " +
+              poseCount +
+              " pose · tay " +
+              Math.round(leftWrist * 100) +
+              "%/" +
+              Math.round(rightWrist * 100) +
+              "%",
+          );
+        }
 
         if (
           phaseRef.current === "question" &&
