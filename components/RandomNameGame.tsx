@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import * as THREE from "three";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const STORAGE_KEY = "lunix-random-name-class";
+const ARENA_RADIUS = 12.2;
 
 const FUNNY_LINES = [
   "Ủa thầy/cô bịt mắt thiệt không vậy? 😭",
@@ -29,6 +31,25 @@ type CaughtStudent = {
   quote: string;
 };
 
+type VoxelRig = {
+  group: THREE.Group;
+  leftArm: THREE.Mesh;
+  rightArm: THREE.Mesh;
+  leftLeg: THREE.Mesh;
+  rightLeg: THREE.Mesh;
+};
+
+type StudentAgent = {
+  index: number;
+  name: string;
+  rig: VoxelRig;
+  velocity: THREE.Vector3;
+  wanderTarget: THREE.Vector3;
+  nextTurnAt: number;
+  phase: number;
+  speed: number;
+};
+
 function parseNames(value: string) {
   return value
     .split(/[\n,;\t]+/)
@@ -45,134 +66,138 @@ function hash(value: string) {
   return Math.abs(result >>> 0);
 }
 
-function roundedRect(
-  context: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number,
-) {
-  const r = Math.min(radius, width / 2, height / 2);
-  context.beginPath();
-  context.moveTo(x + r, y);
-  context.arcTo(x + width, y, x + width, y + height, r);
-  context.arcTo(x + width, y + height, x, y + height, r);
-  context.arcTo(x, y + height, x, y, r);
-  context.arcTo(x, y, x + width, y, r);
-  context.closePath();
+function randomPoint(radius = ARENA_RADIUS - 1.2) {
+  const angle = Math.random() * Math.PI * 2;
+  const distance = Math.sqrt(Math.random()) * radius;
+  return new THREE.Vector3(Math.cos(angle) * distance, 0, Math.sin(angle) * distance);
 }
 
-function playTone(kind: "start" | "caught") {
+function pickRandomIndex(max: number) {
+  if (max <= 1) return 0;
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    const buffer = new Uint32Array(1);
+    crypto.getRandomValues(buffer);
+    return Math.floor((buffer[0] / 4294967296) * max);
+  }
+  return Math.floor(Math.random() * max);
+}
+
+function playCue(kind: "start" | "caught") {
   try {
     const AudioContextClass = window.AudioContext
       || (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     const audio = new AudioContextClass();
-    const oscillator = audio.createOscillator();
     const gain = audio.createGain();
-    oscillator.type = kind === "caught" ? "square" : "sine";
-    oscillator.frequency.setValueAtTime(kind === "caught" ? 180 : 380, audio.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(kind === "caught" ? 90 : 760, audio.currentTime + 0.28);
-    gain.gain.setValueAtTime(0.08, audio.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.32);
-    oscillator.connect(gain).connect(audio.destination);
-    oscillator.start();
-    oscillator.stop(audio.currentTime + 0.34);
-    oscillator.addEventListener("ended", () => void audio.close());
+    gain.connect(audio.destination);
+    gain.gain.setValueAtTime(0.0001, audio.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.12, audio.currentTime + 0.025);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + (kind === "caught" ? 0.78 : 0.5));
+
+    const notes = kind === "caught" ? [210, 150, 92] : [300, 430, 610];
+    notes.forEach((frequency, index) => {
+      const oscillator = audio.createOscillator();
+      oscillator.type = kind === "caught" ? "square" : "sawtooth";
+      oscillator.frequency.setValueAtTime(frequency, audio.currentTime + index * 0.11);
+      oscillator.connect(gain);
+      oscillator.start(audio.currentTime + index * 0.11);
+      oscillator.stop(audio.currentTime + index * 0.11 + 0.2);
+    });
+
+    window.setTimeout(() => void audio.close(), 900);
   } catch {
     // Trình duyệt có thể chặn AudioContext trước lần tương tác đầu tiên.
   }
 }
 
-function drawVoxelPerson(
-  context: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  size: number,
-  color: string,
-  label: string,
-  teacher = false,
-  highlight = false,
+function makeBox(
+  width: number,
+  height: number,
+  depth: number,
+  color: THREE.ColorRepresentation,
+  roughness = 0.78,
 ) {
-  context.save();
-  context.translate(x, y);
+  const geometry = new THREE.BoxGeometry(width, height, depth);
+  const material = new THREE.MeshStandardMaterial({ color, roughness, metalness: 0.02 });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
 
-  if (highlight) {
-    context.beginPath();
-    context.arc(0, 0, size * 2.2, 0, Math.PI * 2);
-    context.fillStyle = "rgba(255, 206, 69, .33)";
-    context.fill();
-    context.lineWidth = Math.max(2, size * 0.15);
-    context.strokeStyle = "#ffce45";
-    context.stroke();
-  }
+function createVoxelCharacter(color: THREE.ColorRepresentation, teacher = false): VoxelRig {
+  const group = new THREE.Group();
 
-  const outline = "#17152b";
-  context.lineWidth = Math.max(1.2, size * 0.12);
-  context.strokeStyle = outline;
+  const torso = makeBox(1.02, 1.42, 0.66, color);
+  torso.position.y = 1.72;
+  group.add(torso);
 
-  context.fillStyle = teacher ? "#f4caa5" : "#f1bd91";
-  context.fillRect(-size * 0.52, -size * 1.52, size * 1.04, size * 0.92);
-  context.strokeRect(-size * 0.52, -size * 1.52, size * 1.04, size * 0.92);
+  const head = makeBox(1.05, 1.05, 1.02, teacher ? "#e5aa7c" : "#e9b58b");
+  head.position.y = 3.02;
+  group.add(head);
 
-  context.fillStyle = color;
-  context.fillRect(-size * 0.62, -size * 0.58, size * 1.24, size * 1.08);
-  context.strokeRect(-size * 0.62, -size * 0.58, size * 1.24, size * 1.08);
+  const hair = makeBox(1.08, 0.3, 1.06, teacher ? "#2c1b18" : "#4a3026");
+  hair.position.set(0, 3.55, -0.01);
+  group.add(hair);
 
-  context.fillStyle = color;
-  context.fillRect(-size * 0.95, -size * 0.48, size * 0.3, size * 0.92);
-  context.fillRect(size * 0.65, -size * 0.48, size * 0.3, size * 0.92);
-  context.strokeRect(-size * 0.95, -size * 0.48, size * 0.3, size * 0.92);
-  context.strokeRect(size * 0.65, -size * 0.48, size * 0.3, size * 0.92);
+  const leftArm = makeBox(0.34, 1.28, 0.42, color);
+  const rightArm = makeBox(0.34, 1.28, 0.42, color);
+  leftArm.position.set(-0.72, 1.74, 0);
+  rightArm.position.set(0.72, 1.74, 0);
+  group.add(leftArm, rightArm);
 
-  context.fillStyle = "#384056";
-  context.fillRect(-size * 0.5, size * 0.54, size * 0.42, size * 0.8);
-  context.fillRect(size * 0.08, size * 0.54, size * 0.42, size * 0.8);
-  context.strokeRect(-size * 0.5, size * 0.54, size * 0.42, size * 0.8);
-  context.strokeRect(size * 0.08, size * 0.54, size * 0.42, size * 0.8);
+  const leftLeg = makeBox(0.39, 1.18, 0.48, teacher ? "#313447" : "#353a50");
+  const rightLeg = makeBox(0.39, 1.18, 0.48, teacher ? "#313447" : "#353a50");
+  leftLeg.position.set(-0.27, 0.43, 0);
+  rightLeg.position.set(0.27, 0.43, 0);
+  group.add(leftLeg, rightLeg);
 
-  context.fillStyle = outline;
+  const leftEye = makeBox(0.13, 0.13, 0.07, "#17152b", 1);
+  const rightEye = makeBox(0.13, 0.13, 0.07, "#17152b", 1);
+  leftEye.position.set(-0.22, 3.08, 0.535);
+  rightEye.position.set(0.22, 3.08, 0.535);
+  group.add(leftEye, rightEye);
+
   if (teacher) {
-    context.fillRect(-size * 0.55, -size * 1.28, size * 1.1, size * 0.24);
-    context.fillStyle = "#ff5d52";
-    context.fillRect(size * 0.45, -size * 1.23, size * 0.72, size * 0.11);
-  } else {
-    context.fillRect(-size * 0.28, -size * 1.2, size * 0.12, size * 0.12);
-    context.fillRect(size * 0.16, -size * 1.2, size * 0.12, size * 0.12);
+    const blindfold = makeBox(1.15, 0.28, 0.09, "#17152b", 0.9);
+    blindfold.position.set(0, 3.08, 0.57);
+    group.add(blindfold);
+
+    const knot = makeBox(0.34, 0.16, 0.12, "#ff5d52", 0.8);
+    knot.position.set(0.63, 3.07, 0.51);
+    knot.rotation.z = -0.45;
+    group.add(knot);
   }
 
-  const fontSize = Math.max(8, Math.min(13, size * 0.9));
-  context.font = "800 " + fontSize + "px Inter, system-ui, sans-serif";
-  context.textAlign = "center";
-  context.textBaseline = "middle";
-  const metrics = context.measureText(label);
-  const labelWidth = Math.min(metrics.width + 12, size * 7.2);
-  const labelY = -size * 2.15;
-  roundedRect(context, -labelWidth / 2, labelY - fontSize * 0.8, labelWidth, fontSize * 1.6, 6);
-  context.fillStyle = teacher ? "#17152b" : "rgba(255,255,255,.94)";
-  context.fill();
-  context.fillStyle = teacher ? "#fff" : "#17152b";
-  const displayLabel = metrics.width + 12 > labelWidth && label.length > 9 ? label.slice(0, 8) + "…" : label;
-  context.fillText(displayLabel, 0, labelY);
+  group.scale.setScalar(teacher ? 1.12 : 0.88);
+  return { group, leftArm, rightArm, leftLeg, rightLeg };
+}
 
-  context.restore();
+function animateWalk(rig: VoxelRig, phase: number, intensity = 1) {
+  const swing = Math.sin(phase) * 0.7 * intensity;
+  rig.leftArm.rotation.x = swing;
+  rig.rightArm.rotation.x = -swing;
+  rig.leftLeg.rotation.x = -swing * 0.75;
+  rig.rightLeg.rotation.x = swing * 0.75;
 }
 
 export function RandomNameGame() {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const arenaRef = useRef<HTMLDivElement | null>(null);
-  const huntStartedAt = useRef(0);
-  const huntTimer = useRef<number | null>(null);
+  const sceneMountRef = useRef<HTMLDivElement | null>(null);
+  const labelLayerRef = useRef<HTMLDivElement | null>(null);
+  const huntingRef = useRef(false);
+  const targetIndexRef = useRef<number | null>(null);
+  const huntStartedAtRef = useRef(0);
+  const caughtRef = useRef<CaughtStudent | null>(null);
+
   const [draft, setDraft] = useState("");
   const [names, setNames] = useState<string[]>([]);
   const [started, setStarted] = useState(false);
   const [hunting, setHunting] = useState(false);
-  const [targetIndex, setTargetIndex] = useState<number | null>(null);
   const [caught, setCaught] = useState<CaughtStudent | null>(null);
   const [caughtIndexes, setCaughtIndexes] = useState<number[]>([]);
   const [noRepeat, setNoRepeat] = useState(true);
   const [muted, setMuted] = useState(false);
   const [shuffleSeed, setShuffleSeed] = useState(0);
+  const [huntRound, setHuntRound] = useState(0);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -189,14 +214,14 @@ export function RandomNameGame() {
     }
   }, []);
 
-  useEffect(() => () => {
-    if (huntTimer.current) window.clearTimeout(huntTimer.current);
-  }, []);
+  useEffect(() => {
+    caughtRef.current = caught;
+  }, [caught]);
 
-  const studentPalette = useMemo(
+  const studentColors = useMemo(
     () => names.map((name, index) => {
-      const hue = (hash(name + ":" + index) + index * 47) % 360;
-      return "hsl(" + hue + " 72% 62%)";
+      const hue = (hash(name + ":" + index) + index * 43) % 360;
+      return new THREE.Color("hsl(" + hue + " 68% 57%)");
     }),
     [names],
   );
@@ -207,12 +232,15 @@ export function RandomNameGame() {
       setError("Hãy nhập ít nhất một tên học sinh.");
       return;
     }
+
     setError("");
     setNames(parsed);
     setCaught(null);
     setCaughtIndexes([]);
-    setTargetIndex(null);
     setStarted(true);
+    huntingRef.current = false;
+    targetIndexRef.current = null;
+
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
     } catch {
@@ -220,8 +248,25 @@ export function RandomNameGame() {
     }
   }, [draft]);
 
+  const finishCatch = useCallback((index: number) => {
+    if (caughtRef.current) return;
+    const result = {
+      index,
+      name: names[index],
+      quote: FUNNY_LINES[pickRandomIndex(FUNNY_LINES.length)],
+    };
+    huntingRef.current = false;
+    targetIndexRef.current = null;
+    setHunting(false);
+    setCaught(result);
+    if (noRepeat) {
+      setCaughtIndexes((current) => current.includes(index) ? current : [...current, index]);
+    }
+    if (!muted) playCue("caught");
+  }, [muted, names, noRepeat]);
+
   const startHunt = useCallback(() => {
-    if (hunting || names.length === 0) return;
+    if (huntingRef.current || names.length === 0 || caughtRef.current) return;
 
     let candidates = names.map((_, index) => index);
     if (noRepeat) {
@@ -232,208 +277,400 @@ export function RandomNameGame() {
       }
     }
 
-    const selectedIndex = candidates[Math.floor(Math.random() * candidates.length)];
-    setCaught(null);
-    setTargetIndex(selectedIndex);
+    const selectedIndex = candidates[pickRandomIndex(candidates.length)];
+    targetIndexRef.current = selectedIndex;
+    huntingRef.current = true;
+    huntStartedAtRef.current = performance.now();
     setHunting(true);
-    huntStartedAt.current = performance.now();
-    if (!muted) playTone("start");
+    setHuntRound((value) => value + 1);
+    if (!muted) playCue("start");
+  }, [caughtIndexes, muted, names, noRepeat]);
 
-    if (huntTimer.current) window.clearTimeout(huntTimer.current);
-    huntTimer.current = window.setTimeout(() => {
-      const quote = FUNNY_LINES[Math.floor(Math.random() * FUNNY_LINES.length)];
-      setHunting(false);
-      setCaught({ index: selectedIndex, name: names[selectedIndex], quote });
-      if (noRepeat) setCaughtIndexes((current) => current.includes(selectedIndex) ? current : [...current, selectedIndex]);
-      if (!muted) playTone("caught");
-    }, 3400);
-  }, [caughtIndexes, hunting, muted, names, noRepeat]);
+  const closeCaught = useCallback(() => {
+    caughtRef.current = null;
+    setCaught(null);
+  }, []);
 
   const restoreCaught = useCallback(() => {
     if (!caught) return;
     setCaughtIndexes((current) => current.filter((index) => index !== caught.index));
+    caughtRef.current = null;
     setCaught(null);
-    setTargetIndex(null);
   }, [caught]);
 
-  const closeCaught = useCallback(() => {
+  const huntAgain = useCallback(() => {
+    caughtRef.current = null;
     setCaught(null);
-    setTargetIndex(null);
-  }, []);
+    window.setTimeout(() => startHunt(), 80);
+  }, [startHunt]);
 
   useEffect(() => {
-    if (!started) return;
-    const canvas = canvasRef.current;
-    const arena = arenaRef.current;
-    if (!canvas || !arena) return;
+    if (!started || names.length === 0) return;
+    const mount = sceneMountRef.current;
+    const labelLayer = labelLayerRef.current;
+    if (!mount || !labelLayer) return;
 
-    let animation = 0;
-    let width = 0;
-    let height = 0;
-    let pixelRatio = 1;
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color("#251e3d");
+    scene.fog = new THREE.Fog("#251e3d", 25, 48);
+
+    const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 100);
+    camera.position.set(0, 18, 23);
+    camera.lookAt(0, 1.4, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.domElement.className = "random-three-canvas";
+    mount.appendChild(renderer.domElement);
+
+    const ambient = new THREE.HemisphereLight("#fff2c2", "#2b2142", 2.4);
+    scene.add(ambient);
+
+    const keyLight = new THREE.DirectionalLight("#fff5dc", 4.2);
+    keyLight.position.set(8, 18, 12);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.shadow.camera.left = -18;
+    keyLight.shadow.camera.right = 18;
+    keyLight.shadow.camera.top = 18;
+    keyLight.shadow.camera.bottom = -18;
+    scene.add(keyLight);
+
+    const rimLight = new THREE.PointLight("#ff7f50", 45, 34, 2);
+    rimLight.position.set(-10, 6, -8);
+    scene.add(rimLight);
+
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(70, 70),
+      new THREE.MeshStandardMaterial({ color: "#30254c", roughness: 0.95 }),
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -0.72;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    const arena = new THREE.Mesh(
+      new THREE.CylinderGeometry(ARENA_RADIUS, ARENA_RADIUS, 0.72, 72),
+      new THREE.MeshStandardMaterial({ color: "#e98732", roughness: 0.82 }),
+    );
+    arena.position.y = -0.34;
+    arena.receiveShadow = true;
+    scene.add(arena);
+
+    const innerArena = new THREE.Mesh(
+      new THREE.CylinderGeometry(ARENA_RADIUS - 0.45, ARENA_RADIUS - 0.45, 0.09, 72),
+      new THREE.MeshStandardMaterial({ color: "#f6b24e", roughness: 0.86 }),
+    );
+    innerArena.position.y = 0.065;
+    innerArena.receiveShadow = true;
+    scene.add(innerArena);
+
+    const border = new THREE.Mesh(
+      new THREE.TorusGeometry(ARENA_RADIUS - 0.12, 0.22, 8, 72),
+      new THREE.MeshStandardMaterial({ color: "#17152b", roughness: 0.7 }),
+    );
+    border.rotation.x = Math.PI / 2;
+    border.position.y = 0.18;
+    scene.add(border);
+
+    for (let index = 0; index < 24; index += 1) {
+      const angle = (index / 24) * Math.PI * 2;
+      const radius = ARENA_RADIUS + 2.7 + (index % 3) * 0.55;
+      const block = makeBox(0.7 + (index % 2) * 0.35, 0.6 + (index % 4) * 0.28, 0.7, index % 2 ? "#6148b8" : "#d9504c");
+      block.position.set(Math.cos(angle) * radius, -0.18 + block.geometry.parameters.height / 2, Math.sin(angle) * radius);
+      block.rotation.y = -angle;
+      scene.add(block);
+    }
+
+    const students: StudentAgent[] = names.map((name, index) => {
+      const rig = createVoxelCharacter(studentColors[index], false);
+      const position = randomPoint(ARENA_RADIUS - 1.3);
+      const avoidCenter = position.length() < 2.5 ? position.normalize().multiplyScalar(3.4) : position;
+      rig.group.position.copy(avoidCenter);
+      rig.group.rotation.y = Math.random() * Math.PI * 2;
+      scene.add(rig.group);
+
+      return {
+        index,
+        name,
+        rig,
+        velocity: new THREE.Vector3(),
+        wanderTarget: randomPoint(ARENA_RADIUS - 1.5),
+        nextTurnAt: 0,
+        phase: Math.random() * Math.PI * 2,
+        speed: 1.15 + ((hash(name + shuffleSeed) % 80) / 100),
+      };
+    });
+
+    const teacherRig = createVoxelCharacter("#7357ff", true);
+    teacherRig.group.position.set(0, 0, 0);
+    scene.add(teacherRig.group);
+
+    const labels = students.map((student) => {
+      const element = document.createElement("div");
+      element.className = "voxel-name-tag";
+      element.textContent = student.name;
+      labelLayer.appendChild(element);
+      return element;
+    });
+
+    const teacherLabel = document.createElement("div");
+    teacherLabel.className = "voxel-name-tag teacher-tag";
+    teacherLabel.textContent = "GIÁO VIÊN";
+    labelLayer.appendChild(teacherLabel);
+
+    const projectLabel = (element: HTMLDivElement, position: THREE.Vector3, yOffset: number, opacity = 1) => {
+      const projected = position.clone();
+      projected.y += yOffset;
+      projected.project(camera);
+      const visible = projected.z > -1 && projected.z < 1 && Math.abs(projected.x) < 1.15 && Math.abs(projected.y) < 1.15;
+      if (!visible) {
+        element.style.opacity = "0";
+        return;
+      }
+      const x = (projected.x * 0.5 + 0.5) * mount.clientWidth;
+      const y = (-projected.y * 0.5 + 0.5) * mount.clientHeight;
+      const distance = camera.position.distanceTo(position);
+      const scale = THREE.MathUtils.clamp(22 / distance, 0.65, 1.05);
+      element.style.opacity = String(opacity);
+      element.style.transform = "translate3d(" + x + "px," + y + "px,0) translate(-50%,-100%) scale(" + scale + ")";
+    };
+
+    const spatial = new Map<string, number[]>();
+    const cellSize = 1.65;
+    const cellKey = (x: number, z: number) => Math.floor(x / cellSize) + ":" + Math.floor(z / cellSize);
+
+    const clock = new THREE.Clock();
+    let frame = 0;
+    let teacherPhase = 0;
+    let teacherWanderTarget = randomPoint(3.3);
+    let teacherNextTurn = 0;
 
     const resize = () => {
-      const rect = arena.getBoundingClientRect();
-      width = Math.max(320, rect.width);
-      height = Math.max(420, rect.height);
-      pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.floor(width * pixelRatio);
-      canvas.height = Math.floor(height * pixelRatio);
-      canvas.style.width = width + "px";
-      canvas.style.height = height + "px";
+      const width = Math.max(1, mount.clientWidth);
+      const height = Math.max(1, mount.clientHeight);
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
     };
 
     const observer = new ResizeObserver(resize);
-    observer.observe(arena);
+    observer.observe(mount);
     resize();
 
-    const render = (time: number) => {
-      const context = canvas.getContext("2d");
-      if (!context) return;
+    const updateStudents = (dt: number, now: number) => {
+      spatial.clear();
+      students.forEach((student, index) => {
+        const key = cellKey(student.rig.group.position.x, student.rig.group.position.z);
+        const bucket = spatial.get(key);
+        if (bucket) bucket.push(index);
+        else spatial.set(key, [index]);
+      });
 
-      context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-      context.clearRect(0, 0, width, height);
+      students.forEach((student, index) => {
+        const position = student.rig.group.position;
+        if (now > student.nextTurnAt || position.distanceTo(student.wanderTarget) < 1.1) {
+          student.wanderTarget.copy(randomPoint(ARENA_RADIUS - 1.35));
+          student.nextTurnAt = now + 900 + Math.random() * 2400;
+        }
 
-      const centerX = width / 2;
-      const centerY = height / 2 + 12;
-      const arenaRadius = Math.max(120, Math.min(width, height) * 0.42);
+        const desired = student.wanderTarget.clone().sub(position);
+        desired.y = 0;
+        if (desired.lengthSq() > 0.01) desired.normalize().multiplyScalar(student.speed);
 
-      const background = context.createRadialGradient(centerX, centerY, arenaRadius * 0.1, centerX, centerY, arenaRadius * 1.15);
-      background.addColorStop(0, "#ffdd75");
-      background.addColorStop(0.72, "#f9a849");
-      background.addColorStop(1, "#e8762e");
-      context.fillStyle = background;
-      context.fillRect(0, 0, width, height);
+        const separation = new THREE.Vector3();
+        const cx = Math.floor(position.x / cellSize);
+        const cz = Math.floor(position.z / cellSize);
+        for (let dx = -1; dx <= 1; dx += 1) {
+          for (let dz = -1; dz <= 1; dz += 1) {
+            const bucket = spatial.get((cx + dx) + ":" + (cz + dz));
+            if (!bucket) continue;
+            for (const otherIndex of bucket) {
+              if (otherIndex === index) continue;
+              const other = students[otherIndex].rig.group.position;
+              const distance = position.distanceTo(other);
+              if (distance > 0 && distance < 1.15) {
+                separation.add(position.clone().sub(other).normalize().multiplyScalar((1.15 - distance) * 2.3));
+              }
+            }
+          }
+        }
 
-      context.beginPath();
-      context.arc(centerX, centerY, arenaRadius, 0, Math.PI * 2);
-      context.fillStyle = "rgba(255, 223, 135, .74)";
-      context.fill();
-      context.lineWidth = Math.max(5, arenaRadius * 0.025);
-      context.strokeStyle = "#17152b";
-      context.stroke();
+        const teacherDistance = position.distanceTo(teacherRig.group.position);
+        const flee = new THREE.Vector3();
+        if (huntingRef.current && teacherDistance < 4.4) {
+          flee.copy(position).sub(teacherRig.group.position).setY(0);
+          if (flee.lengthSq() > 0.01) flee.normalize().multiplyScalar(3.2 * (1 - teacherDistance / 4.4));
+        }
 
-      context.setLineDash([7, 9]);
-      context.lineWidth = 2;
-      context.strokeStyle = "rgba(23,21,43,.2)";
-      context.beginPath();
-      context.arc(centerX, centerY, arenaRadius * 0.43, 0, Math.PI * 2);
-      context.stroke();
-      context.setLineDash([]);
+        const radius = Math.hypot(position.x, position.z);
+        const boundary = new THREE.Vector3();
+        if (radius > ARENA_RADIUS - 1.0) {
+          boundary.set(-position.x, 0, -position.z).normalize().multiplyScalar((radius - (ARENA_RADIUS - 1.0)) * 3.8);
+        }
 
-      const count = names.length;
-      const rings = Math.max(1, Math.ceil(count / 28));
-      const avatarSize = Math.max(6, Math.min(15, 118 / Math.sqrt(Math.max(1, count)) + 3));
-      const positions: Array<{ x: number; y: number }> = [];
+        const targetVelocity = desired.add(separation).add(flee).add(boundary);
+        const topSpeed = student.speed * (huntingRef.current ? 1.28 : 1);
+        if (targetVelocity.length() > topSpeed) targetVelocity.setLength(topSpeed);
+        student.velocity.lerp(targetVelocity, Math.min(1, dt * 4.2));
 
-      for (let index = 0; index < count; index += 1) {
-        const ring = index % rings;
-        const itemsInRing = Math.ceil((count - ring) / rings);
-        const positionInRing = Math.floor(index / rings);
-        const baseAngle = (positionInRing / Math.max(1, itemsInRing)) * Math.PI * 2;
-        const personal = (hash(names[index] + ":" + index + ":" + shuffleSeed) % 1000) / 1000;
-        const direction = index % 2 === 0 ? 1 : -1;
-        const speed = 0.00018 + personal * 0.00008;
-        const motion = (started ? time : 0) * speed * direction;
-        const laneFraction = rings === 1 ? 0.79 : 0.5 + (ring / Math.max(1, rings - 1)) * 0.43;
-        const radius = arenaRadius * laneFraction;
-        const angle = baseAngle + motion + personal * 0.35;
-        positions.push({
-          x: centerX + Math.cos(angle) * radius,
-          y: centerY + Math.sin(angle) * radius,
-        });
+        position.x += student.velocity.x * dt;
+        position.z += student.velocity.z * dt;
+
+        const distanceFromCenter = Math.hypot(position.x, position.z);
+        if (distanceFromCenter > ARENA_RADIUS - 0.75) {
+          const scale = (ARENA_RADIUS - 0.75) / distanceFromCenter;
+          position.x *= scale;
+          position.z *= scale;
+          student.wanderTarget.copy(randomPoint(ARENA_RADIUS - 1.8));
+        }
+
+        if (student.velocity.lengthSq() > 0.04) {
+          student.rig.group.rotation.y = THREE.MathUtils.lerp(
+            student.rig.group.rotation.y,
+            Math.atan2(student.velocity.x, student.velocity.z),
+            Math.min(1, dt * 7),
+          );
+        }
+
+        student.phase += dt * (6.5 + student.speed * 1.8);
+        animateWalk(student.rig, student.phase, Math.min(1, student.velocity.length() / Math.max(0.1, student.speed)));
+        student.rig.group.position.y = Math.abs(Math.sin(student.phase * 2)) * 0.035;
+      });
+    };
+
+    const updateTeacher = (dt: number, now: number) => {
+      const position = teacherRig.group.position;
+      const velocity = new THREE.Vector3();
+
+      if (!huntingRef.current) {
+        if (now > teacherNextTurn || position.distanceTo(teacherWanderTarget) < 0.7) {
+          teacherWanderTarget = randomPoint(3.2);
+          teacherNextTurn = now + 1600 + Math.random() * 1800;
+        }
+        velocity.copy(teacherWanderTarget).sub(position).setY(0);
+        if (velocity.lengthSq() > 0.01) velocity.normalize().multiplyScalar(0.55);
+      } else {
+        const age = now - huntStartedAtRef.current;
+        const targetIndex = targetIndexRef.current;
+
+        if (age < 1050) {
+          velocity.set(0, 0, 0);
+          const introScale = THREE.MathUtils.clamp(age / 450, 0.1, 1);
+          teacherRig.group.scale.setScalar(1.12 * introScale);
+        } else if (age < 2250) {
+          teacherRig.group.scale.setScalar(1.12);
+          const spinAngle = age * 0.004;
+          velocity.set(Math.sin(spinAngle), 0, Math.cos(spinAngle)).multiplyScalar(1.35);
+        } else if (targetIndex !== null && students[targetIndex]) {
+          const target = students[targetIndex].rig.group.position;
+          velocity.copy(target).sub(position).setY(0);
+          const distance = velocity.length();
+          if (distance < 0.88) {
+            finishCatch(targetIndex);
+            velocity.set(0, 0, 0);
+          } else {
+            velocity.normalize().multiplyScalar(age > 4300 ? 5.9 : 4.6);
+          }
+        }
       }
 
-      const sorted = positions.map((position, index) => ({ position, index })).sort((a, b) => a.position.y - b.position.y);
-      for (const item of sorted) {
-        const isCaught = caught?.index === item.index;
-        drawVoxelPerson(
-          context,
-          item.position.x,
-          item.position.y,
-          avatarSize * (isCaught ? 1.18 : 1),
-          studentPalette[item.index],
-          names[item.index],
-          false,
-          isCaught,
+      position.x += velocity.x * dt;
+      position.z += velocity.z * dt;
+
+      const radius = Math.hypot(position.x, position.z);
+      if (radius > ARENA_RADIUS - 0.8) {
+        const scale = (ARENA_RADIUS - 0.8) / radius;
+        position.x *= scale;
+        position.z *= scale;
+      }
+
+      if (velocity.lengthSq() > 0.03) {
+        teacherRig.group.rotation.y = THREE.MathUtils.lerp(
+          teacherRig.group.rotation.y,
+          Math.atan2(velocity.x, velocity.z),
+          Math.min(1, dt * 8),
         );
       }
 
-      if (hunting && targetIndex !== null && positions[targetIndex]) {
-        const target = positions[targetIndex];
-        const huntAge = Math.max(0, time - huntStartedAt.current);
-        const randomSpin = huntAge < 2400
-          ? huntAge * 0.006
-          : Math.atan2(target.y - centerY, target.x - centerX);
-        context.save();
-        context.translate(centerX, centerY);
-        context.rotate(randomSpin);
-        context.strokeStyle = "rgba(23,21,43,.45)";
-        context.lineWidth = 4;
-        context.setLineDash([10, 10]);
-        context.beginPath();
-        context.moveTo(25, 0);
-        context.lineTo(Math.min(arenaRadius * 0.34, 100), 0);
-        context.stroke();
-        context.setLineDash([]);
-        context.restore();
-      }
-
-      drawVoxelPerson(
-        context,
-        centerX,
-        centerY,
-        Math.max(21, Math.min(31, arenaRadius * 0.11)),
-        "#7357ff",
-        "GIÁO VIÊN",
-        true,
-        hunting,
-      );
-
-      if (hunting) {
-        const age = time - huntStartedAt.current;
-        const message = age < 1100 ? "BỊT MẮT..." : age < 2400 ? "NGHE TIẾNG BƯỚC CHÂN..." : "BẮT!";
-        context.save();
-        context.font = "950 " + Math.max(20, Math.min(34, width * 0.035)) + "px Inter, system-ui, sans-serif";
-        context.textAlign = "center";
-        context.fillStyle = "#17152b";
-        context.fillText(message, centerX, Math.max(42, centerY - arenaRadius - 28));
-        context.restore();
-      }
-
-      animation = window.requestAnimationFrame(render);
+      teacherPhase += dt * (huntingRef.current ? 11 : 4.5);
+      animateWalk(teacherRig, teacherPhase, Math.min(1, velocity.length() / 2.4));
+      teacherRig.group.position.y = Math.abs(Math.sin(teacherPhase * 2)) * (huntingRef.current ? 0.07 : 0.025);
     };
 
-    animation = window.requestAnimationFrame(render);
+    const animate = () => {
+      const dt = Math.min(0.033, clock.getDelta());
+      const now = performance.now();
+
+      updateStudents(dt, now);
+      updateTeacher(dt, now);
+
+      const huntingAge = huntingRef.current ? now - huntStartedAtRef.current : 0;
+      const cameraTarget = teacherRig.group.position.clone();
+      if (huntingRef.current && targetIndexRef.current !== null && students[targetIndexRef.current]) {
+        cameraTarget.lerp(students[targetIndexRef.current].rig.group.position, 0.34);
+      }
+      cameraTarget.y = 1.5;
+
+      const desiredCamera = huntingRef.current
+        ? new THREE.Vector3(cameraTarget.x * 0.15, 14.2, 18.8 + cameraTarget.z * 0.08)
+        : new THREE.Vector3(0, 18, 23);
+
+      if (huntingRef.current && huntingAge > 2200) {
+        desiredCamera.x += Math.sin(now * 0.035) * 0.09;
+        desiredCamera.y += Math.sin(now * 0.051) * 0.055;
+      }
+
+      camera.position.lerp(desiredCamera, Math.min(1, dt * 2.8));
+      camera.lookAt(cameraTarget);
+
+      students.forEach((student, index) => {
+        const faded = noRepeat && caughtIndexes.includes(index) ? 0.62 : 1;
+        projectLabel(labels[index], student.rig.group.position, 4.05, faded);
+      });
+      projectLabel(teacherLabel, teacherRig.group.position, 4.45, 1);
+
+      renderer.render(scene, camera);
+      frame = window.requestAnimationFrame(animate);
+    };
+
+    frame = window.requestAnimationFrame(animate);
+
     return () => {
-      window.cancelAnimationFrame(animation);
+      window.cancelAnimationFrame(frame);
       observer.disconnect();
+      labels.forEach((label) => label.remove());
+      teacherLabel.remove();
+
+      scene.traverse((object) => {
+        if (object instanceof THREE.Mesh) {
+          object.geometry.dispose();
+          const materials = Array.isArray(object.material) ? object.material : [object.material];
+          materials.forEach((material) => material.dispose());
+        }
+      });
+
+      renderer.dispose();
+      renderer.domElement.remove();
     };
-  }, [caught, hunting, names, shuffleSeed, started, studentPalette, targetIndex]);
+  }, [caughtIndexes, finishCatch, names, noRepeat, shuffleSeed, started, studentColors]);
 
   if (!started) {
     const previewCount = parseNames(draft).length;
     return (
-      <main className="random-setup-shell">
+      <main className="random-setup-shell compact">
         <Link className="game-back-link" href="/">← Game Hub</Link>
-        <section className="random-setup-card">
-          <div className="random-setup-copy">
-            <p className="random-kicker">RANDOM NAME · BỊT MẮT BẮT DÊ</p>
-            <h1>Cả lớp vào vòng tròn.<br /><em>Ai sẽ bị bắt?</em></h1>
-            <p>
-              Dán danh sách lớp từ Excel, Google Sheets hoặc nhập mỗi tên một dòng.
-              Game không đặt giới hạn cứng số học sinh và dùng Canvas để lớp đông vẫn chạy nhẹ.
-            </p>
-            <div className="random-feature-row">
-              <span>🙈 Giáo viên ở trung tâm</span>
-              <span>🧱 Nhân vật voxel</span>
-              <span>🎲 Chọn ngẫu nhiên công bằng</span>
-            </div>
-          </div>
-
+        <section className="random-setup-card compact">
           <div className="random-input-panel">
+            <p className="random-kicker">RANDOM NAME</p>
             <div className="random-input-heading">
-              <div><b>Danh sách học sinh</b><span>Mỗi dòng một tên hoặc dán nguyên cột</span></div>
+              <div>
+                <b>Danh sách học sinh</b>
+                <span>Mỗi dòng một tên hoặc dán nguyên cột</span>
+              </div>
               <strong>{previewCount}</strong>
             </div>
             <textarea
@@ -444,7 +681,10 @@ export function RandomNameGame() {
             />
             <label className="random-check">
               <input checked={noRepeat} onChange={(event) => setNoRepeat(event.target.checked)} type="checkbox" />
-              <span><b>Không lặp tên</b><small>Mỗi học sinh chỉ bị bắt một lần cho đến khi hết lượt.</small></span>
+              <span>
+                <b>Không lặp tên</b>
+                <small>Mỗi học sinh chỉ bị bắt một lần cho đến khi hết lượt.</small>
+              </span>
             </label>
             {error && <p className="form-error" role="alert">{error}</p>}
             <button className="random-start-button" onClick={beginGame} type="button">
@@ -459,7 +699,7 @@ export function RandomNameGame() {
   const caughtCount = noRepeat ? caughtIndexes.length : 0;
 
   return (
-    <main className="random-game-shell">
+    <main className="random-game-shell three-mode">
       <header className="random-game-topbar">
         <Link href="/">GAME HUB</Link>
         <div>
@@ -468,30 +708,46 @@ export function RandomNameGame() {
         </div>
         <div className="random-top-actions">
           <button onClick={() => setMuted((current) => !current)} type="button">{muted ? "🔇" : "🔊"}</button>
-          <button onClick={() => setShuffleSeed((value) => value + 1)} type="button">Trộn vị trí</button>
-          <button onClick={() => setStarted(false)} type="button">Sửa danh sách</button>
+          <button disabled={hunting} onClick={() => setShuffleSeed((value) => value + 1)} type="button">Đổi vị trí</button>
+          <button disabled={hunting} onClick={() => setStarted(false)} type="button">Sửa danh sách</button>
         </div>
       </header>
 
-      <section className="random-arena-wrap" ref={arenaRef}>
-        <canvas aria-label="Đấu trường bịt mắt bắt dê" ref={canvasRef} />
+      <section className="random-arena-wrap three-arena">
+        <div className="random-three-scene" ref={sceneMountRef} />
+        <div className="random-label-layer" ref={labelLayerRef} />
+
         <div className="random-arena-controls">
           <button className="hunt-button" disabled={hunting || Boolean(caught)} onClick={startHunt} type="button">
             {hunting ? "ĐANG SĂN..." : "🙈 BẮT ĐẦU SĂN"}
           </button>
           {noRepeat && caughtIndexes.length >= names.length && names.length > 0 && (
-            <button className="reset-random-button" onClick={() => setCaughtIndexes([])} type="button">Làm mới lượt gọi</button>
+            <button className="reset-random-button" onClick={() => setCaughtIndexes([])} type="button">
+              Làm mới lượt gọi
+            </button>
           )}
         </div>
 
+        {hunting && (
+          <div className="hunter-announcement" key={huntRound} aria-hidden="true">
+            <span>⚠</span>
+            <strong>THỢ SĂN XUẤT HIỆN</strong>
+            <small>CHẠY!</small>
+          </div>
+        )}
+
         {caught && (
-          <div className="caught-backdrop" role="dialog" aria-modal="true" aria-labelledby="caught-name">
-            <div className="caught-card">
-              <span className="caught-badge">💥 ĐÃ BỊ TÓM!</span>
+          <div className="caught-cinematic" role="dialog" aria-modal="true" aria-labelledby="caught-name">
+            <div className="caught-shard shard-one" />
+            <div className="caught-shard shard-two" />
+            <div className="caught-shard shard-three" />
+            <div className="caught-shard shard-four" />
+            <div className="caught-cinematic-copy">
+              <span>ĐÃ BỊ TÓM!</span>
               <h2 id="caught-name">{caught.name}</h2>
               <p>“{caught.quote}”</p>
-              <div className="caught-actions">
-                <button className="caught-primary" onClick={() => { closeCaught(); window.setTimeout(startHunt, 80); }} type="button">Bắt tiếp →</button>
+              <div className="caught-actions cinematic-actions">
+                <button className="caught-primary" onClick={huntAgain} type="button">Bắt tiếp →</button>
                 {noRepeat && <button onClick={restoreCaught} type="button">Cho lại lượt</button>}
                 <button onClick={closeCaught} type="button">Đóng</button>
               </div>
