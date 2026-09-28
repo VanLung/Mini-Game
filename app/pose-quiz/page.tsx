@@ -1,5 +1,5 @@
-import { PoseQuizGame } from "../../components/PoseQuizGame";
+import { PoseQuizStudio } from "../../components/PoseQuizStudio";
 
 export default function PoseQuizPage() {
-  return <PoseQuizGame />;
+  return <PoseQuizStudio />;
 }
