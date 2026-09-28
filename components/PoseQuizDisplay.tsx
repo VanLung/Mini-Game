@@ -95,8 +95,6 @@ function drawPoseOverlay(
   }
 }
 
-type DisplayPhase = DisplayTelemetry["phase"];
-
 const MODEL_URL =
   "https://huggingface.co/zwh20081/yolo26-onnx/resolve/main/yolo26n-pose.onnx?download=true";
 
