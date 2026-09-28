@@ -104,7 +104,7 @@ export function HostGame({ code }: { code: string }) {
     if (room?.status === "question" && remaining === 0 && !busy) void command("leaderboard");
   }, [busy, command, remaining, room?.status]);
 
-  if (!hostToken) return <main className="center-message"><h1>Không tìm thấy quyền giáo viên</h1><p>Hãy tạo một phòng mới từ trang chủ.</p><Link href="/">Về trang chủ</Link></main>;
+  if (!hostToken) return <main className="center-message"><h1>Không tìm thấy quyền giáo viên</h1><p>Hãy tạo một phòng mới từ trang Cyber City.</p><Link href="/cyber-city">Về trang chủ</Link></main>;
   if (!room) return <main className="center-message"><div className="spinner" /><p>Đang kết nối phòng {code}...</p>{error && <span>{error}</span>}</main>;
 
   const shareUrl = typeof window === "undefined" ? "" : window.location.origin;
@@ -147,7 +147,7 @@ export function HostGame({ code }: { code: string }) {
         </section>
       )}
 
-      {room.status === "finished" && <section className="finish-screen"><p className="screen-kicker">CYBER CITY ĐÃ ĐƯỢC KHÔI PHỤC</p><h1>Vinh danh chiến binh xuất sắc</h1><Podium players={room.leaderboard} /><Link className="host-primary link-button" href="/">Tạo phòng mới</Link></section>}
+      {room.status === "finished" && <section className="finish-screen"><p className="screen-kicker">CYBER CITY ĐÃ ĐƯỢC KHÔI PHỤC</p><h1>Vinh danh chiến binh xuất sắc</h1><Podium players={room.leaderboard} /><Link className="host-primary link-button" href="/cyber-city">Tạo phòng mới</Link></section>}
       {error && <div className="toast-error" role="alert">{error}</div>}
     </main>
   );
