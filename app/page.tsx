@@ -59,18 +59,6 @@ export default function Home() {
             </Link>
           ))}
 
-          <article className="hub-card future" aria-label="Vị trí dành cho trò chơi mới">
-            <div className="hub-card-top">
-              <span className="hub-card-icon" aria-hidden="true">＋</span>
-              <b>Mở rộng</b>
-            </div>
-            <div className="hub-card-copy">
-              <p>GAME TIẾP THEO</p>
-              <h2>Thêm game mới</h2>
-              <span>Cấu trúc Home đã sẵn sàng để gắn thêm các game khác mà không ảnh hưởng game hiện có.</span>
-            </div>
-            <div className="hub-card-action muted">Game Hub có thể mở rộng</div>
-          </article>
         </div>
       </section>
     </main>
