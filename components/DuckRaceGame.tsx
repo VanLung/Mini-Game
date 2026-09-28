@@ -199,6 +199,7 @@ export function DuckRaceGame() {
   const nextEventAtRef = useRef(0);
   const lastEventIdRef = useRef("");
   const mutedRef = useRef(false);
+  const finalSprintShownRef = useRef(false);
 
   const [draft, setDraft] = useState("");
   const [names, setNames] = useState<string[]>([]);
@@ -254,6 +255,7 @@ export function DuckRaceGame() {
     startedAtRef.current = performance.now();
     nextEventAtRef.current = 5200 + Math.random() * 1800;
     lastEventIdRef.current = "";
+    finalSprintShownRef.current = false;
     racersRef.current.forEach((racer) => {
       racer.progress = 0;
       racer.finishedAt = null;
@@ -548,7 +550,8 @@ export function DuckRaceGame() {
         racers.forEach((racer) => {
           if (racer.finishedAt !== null) return;
 
-          let multiplier = 1;
+          const plannedRank = targetRank.get(racer.index) ?? racers.length;
+          let multiplier = plannedRank === 0 ? 1.08 : plannedRank === 1 ? 1.045 : plannedRank === 2 ? 1.025 : 1;
           if (now < racer.boostUntil) multiplier *= 1.65;
           if (now < racer.slowUntil) multiplier *= 0.42;
           if (now < racer.napUntil) multiplier = 0.05;
@@ -556,11 +559,11 @@ export function DuckRaceGame() {
           if (now < racer.ufoUntil) multiplier *= 0.22;
 
           if (finalSprint) {
-            const rank = targetRank.get(racer.index) ?? racers.length;
-            if (rank === 0) multiplier *= 1.85;
-            else if (rank === 1) multiplier *= 1.34;
-            else if (rank === 2) multiplier *= 1.17;
-            else multiplier *= THREE.MathUtils.clamp(1.04 - rank * 0.006, 0.82, 1.02);
+            const rank = plannedRank;
+            if (rank === 0) multiplier *= 2.45;
+            else if (rank === 1) multiplier *= 1.32;
+            else if (rank === 2) multiplier *= 1.12;
+            else multiplier *= THREE.MathUtils.clamp(0.92 - rank * 0.004, 0.68, 0.9);
             racer.effectText = rank === 0 ? "🔥 HÀO QUANG NHÂN VẬT CHÍNH" : "";
           }
 
@@ -591,7 +594,8 @@ export function DuckRaceGame() {
           }
         });
 
-        if (finalSprint && eventText === null) {
+        if (finalSprint && !finalSprintShownRef.current) {
+          finalSprintShownRef.current = true;
           setEventText({ title: "CHẶNG CUỐI — KHÔNG AI ĐƯỢC TIN AI!", subtitle: "Drama tạm dừng. Tất cả nước rút!", emoji: "🔥" });
           window.setTimeout(() => setEventText(null), 2300);
         }
