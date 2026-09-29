@@ -73,6 +73,32 @@ function randomPoint(radius = ARENA_RADIUS - 1.2) {
   return new THREE.Vector3(Math.cos(angle) * distance, 0, Math.sin(angle) * distance);
 }
 
+function pickFarRunTarget(origin: THREE.Vector3, radius = ARENA_RADIUS - 1.0) {
+  let best = randomPoint(radius);
+  let bestDistance = origin.distanceTo(best);
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const angle = Math.random() * Math.PI * 2;
+    const minRadius = radius * 0.55;
+    const distanceFromCenter = minRadius + Math.random() * (radius - minRadius);
+    const candidate = new THREE.Vector3(
+      Math.cos(angle) * distanceFromCenter,
+      0,
+      Math.sin(angle) * distanceFromCenter,
+    );
+    const travelDistance = origin.distanceTo(candidate);
+
+    if (travelDistance > bestDistance) {
+      best = candidate;
+      bestDistance = travelDistance;
+    }
+
+    if (travelDistance > ARENA_RADIUS * 1.05) break;
+  }
+
+  return best;
+}
+
 function pickRandomIndex(max: number) {
   if (max <= 1) return 0;
   if (typeof crypto !== "undefined" && crypto.getRandomValues) {
@@ -411,10 +437,10 @@ export function RandomNameGame() {
         name,
         rig,
         velocity: new THREE.Vector3(),
-        wanderTarget: randomPoint(ARENA_RADIUS - 1.5),
-        nextTurnAt: 0,
+        wanderTarget: pickFarRunTarget(avoidCenter, ARENA_RADIUS - 1.1),
+        nextTurnAt: performance.now() + 4500 + Math.random() * 2500,
         phase: Math.random() * Math.PI * 2,
-        speed: 1.75 + ((hash(name + shuffleSeed) % 105) / 100),
+        speed: 2.45 + ((hash(name + shuffleSeed) % 120) / 100),
       };
     });
 
@@ -503,9 +529,11 @@ export function RandomNameGame() {
 
       students.forEach((student, index) => {
         const position = student.rig.group.position;
-        if (now > student.nextTurnAt || position.distanceTo(student.wanderTarget) < 1.1) {
-          student.wanderTarget.copy(randomPoint(ARENA_RADIUS - 1.35));
-          student.nextTurnAt = now + 900 + Math.random() * 2400;
+        if (now > student.nextTurnAt || position.distanceTo(student.wanderTarget) < 1.15) {
+          student.wanderTarget.copy(
+            pickFarRunTarget(position, ARENA_RADIUS - 0.95),
+          );
+          student.nextTurnAt = now + 5200 + Math.random() * 3200;
         }
 
         const desired = student.wanderTarget.clone().sub(position);
@@ -544,9 +572,9 @@ export function RandomNameGame() {
         }
 
         const targetVelocity = desired.add(separation).add(flee).add(boundary);
-        const topSpeed = student.speed * (huntingRef.current ? 1.42 : 1.08);
+        const topSpeed = student.speed * (huntingRef.current ? 1.58 : 1.16);
         if (targetVelocity.length() > topSpeed) targetVelocity.setLength(topSpeed);
-        student.velocity.lerp(targetVelocity, Math.min(1, dt * 4.2));
+        student.velocity.lerp(targetVelocity, Math.min(1, dt * 5.4));
 
         position.x += student.velocity.x * dt;
         position.z += student.velocity.z * dt;
@@ -556,7 +584,10 @@ export function RandomNameGame() {
           const scale = (ARENA_RADIUS - 0.75) / distanceFromCenter;
           position.x *= scale;
           position.z *= scale;
-          student.wanderTarget.copy(randomPoint(ARENA_RADIUS - 1.8));
+          student.wanderTarget.copy(
+            pickFarRunTarget(position, ARENA_RADIUS - 1.05),
+          );
+          student.nextTurnAt = now + 5000 + Math.random() * 2800;
         }
 
         if (student.velocity.lengthSq() > 0.04) {
