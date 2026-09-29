@@ -289,6 +289,7 @@ export function RandomNameGame() {
     if (noRepeat) {
       candidates = candidates.filter((index) => !caughtIndexes.includes(index));
       if (candidates.length === 0) {
+        caughtIndexesRef.current = [];
         setCaughtIndexes([]);
         candidates = names.map((_, index) => index);
       }
@@ -751,7 +752,7 @@ export function RandomNameGame() {
 
         <div className="random-arena-controls">
           <button className="hunt-button" disabled={hunting || Boolean(caught)} onClick={startHunt} type="button">
-            {hunting ? "ĐANG SĂN..." : "🙈 BẮT ĐẦU SĂN"}
+            {hunting ? "ĐANG BẮT DÊ..." : "🙈 BẮT ĐẦU BỊT MẮT BẮT DÊ"}
           </button>
           {noRepeat && caughtIndexes.length >= names.length && names.length > 0 && (
             <button className="reset-random-button" onClick={() => setCaughtIndexes([])} type="button">
