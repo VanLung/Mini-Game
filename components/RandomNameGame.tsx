@@ -5,7 +5,8 @@ import * as THREE from "three";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const STORAGE_KEY = "lunix-random-name-class";
-const ARENA_RADIUS = 12.2;
+const ARENA_RADIUS = 16.2;
+const TEACHER_MOVE_SPEED = 5.2;
 
 const FUNNY_LINES = [
   "Ủa thầy/cô bịt mắt thiệt không vậy? 😭",
@@ -168,7 +169,7 @@ function createVoxelCharacter(color: THREE.ColorRepresentation, teacher = false)
     group.add(knot);
   }
 
-  group.scale.setScalar(teacher ? 1.12 : 0.88);
+  group.scale.setScalar(teacher ? 1.04 : 0.7);
   return { group, leftArm, rightArm, leftLeg, rightLeg };
 }
 
@@ -328,11 +329,11 @@ export function RandomNameGame() {
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color("#251e3d");
-    scene.fog = new THREE.Fog("#251e3d", 25, 48);
+    scene.fog = new THREE.Fog("#251e3d", 34, 66);
 
     const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 100);
-    camera.position.set(0, 18, 23);
-    camera.lookAt(0, 1.4, 0);
+    camera.position.set(0, 22.5, 31);
+    camera.lookAt(0, 1.2, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -349,10 +350,10 @@ export function RandomNameGame() {
     keyLight.position.set(8, 18, 12);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.set(2048, 2048);
-    keyLight.shadow.camera.left = -18;
-    keyLight.shadow.camera.right = 18;
-    keyLight.shadow.camera.top = 18;
-    keyLight.shadow.camera.bottom = -18;
+    keyLight.shadow.camera.left = -24;
+    keyLight.shadow.camera.right = 24;
+    keyLight.shadow.camera.top = 24;
+    keyLight.shadow.camera.bottom = -24;
     scene.add(keyLight);
 
     const rimLight = new THREE.PointLight("#ff7f50", 45, 34, 2);
@@ -384,17 +385,22 @@ export function RandomNameGame() {
     innerArena.receiveShadow = true;
     scene.add(innerArena);
 
-    const border = new THREE.Mesh(
-      new THREE.TorusGeometry(ARENA_RADIUS - 0.12, 0.22, 8, 72),
-      new THREE.MeshStandardMaterial({ color: "#17152b", roughness: 0.7 }),
+    const boundaryLine = new THREE.Mesh(
+      new THREE.RingGeometry(ARENA_RADIUS - 0.18, ARENA_RADIUS + 0.02, 96),
+      new THREE.MeshBasicMaterial({
+        color: "#fff0b8",
+        transparent: true,
+        opacity: 0.42,
+        side: THREE.DoubleSide,
+      }),
     );
-    border.rotation.x = Math.PI / 2;
-    border.position.y = 0.18;
-    scene.add(border);
+    boundaryLine.rotation.x = -Math.PI / 2;
+    boundaryLine.position.y = 0.13;
+    scene.add(boundaryLine);
 
     for (let index = 0; index < 24; index += 1) {
       const angle = (index / 24) * Math.PI * 2;
-      const radius = ARENA_RADIUS + 2.7 + (index % 3) * 0.55;
+      const radius = ARENA_RADIUS + 4.2 + (index % 3) * 0.7;
       const blockHeight = 0.6 + (index % 4) * 0.28;
       const block = makeBox(0.7 + (index % 2) * 0.35, blockHeight, 0.7, index % 2 ? "#6148b8" : "#d9504c");
       block.position.set(Math.cos(angle) * radius, -0.18 + blockHeight / 2, Math.sin(angle) * radius);
@@ -405,7 +411,7 @@ export function RandomNameGame() {
     const students: StudentAgent[] = names.map((name, index) => {
       const rig = createVoxelCharacter(studentColors[index], false);
       const position = randomPoint(ARENA_RADIUS - 1.3);
-      const avoidCenter = position.length() < 2.5 ? position.normalize().multiplyScalar(3.4) : position;
+      const avoidCenter = position.length() < 3.1 ? position.normalize().multiplyScalar(4.3) : position;
       rig.group.position.copy(avoidCenter);
       rig.group.rotation.y = Math.random() * Math.PI * 2;
       scene.add(rig.group);
@@ -418,7 +424,7 @@ export function RandomNameGame() {
         wanderTarget: randomPoint(ARENA_RADIUS - 1.5),
         nextTurnAt: 0,
         phase: Math.random() * Math.PI * 2,
-        speed: 1.15 + ((hash(name + shuffleSeed) % 80) / 100),
+        speed: 1.75 + ((hash(name + shuffleSeed) % 105) / 100),
       };
     });
 
@@ -530,7 +536,7 @@ export function RandomNameGame() {
         }
 
         const targetVelocity = desired.add(separation).add(flee).add(boundary);
-        const topSpeed = student.speed * (huntingRef.current ? 1.28 : 1);
+        const topSpeed = student.speed * (huntingRef.current ? 1.42 : 1.08);
         if (targetVelocity.length() > topSpeed) targetVelocity.setLength(topSpeed);
         student.velocity.lerp(targetVelocity, Math.min(1, dt * 4.2));
 
