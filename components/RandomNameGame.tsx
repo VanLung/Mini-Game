@@ -386,18 +386,6 @@ export function RandomNameGame() {
     innerArena.receiveShadow = true;
     scene.add(innerArena);
 
-    const boundaryLine = new THREE.Mesh(
-      new THREE.RingGeometry(ARENA_RADIUS - 0.18, ARENA_RADIUS + 0.02, 96),
-      new THREE.MeshBasicMaterial({
-        color: "#fff0b8",
-        transparent: true,
-        opacity: 0.42,
-        side: THREE.DoubleSide,
-      }),
-    );
-    boundaryLine.rotation.x = -Math.PI / 2;
-    boundaryLine.position.y = 0.13;
-    scene.add(boundaryLine);
 
     for (let index = 0; index < 24; index += 1) {
       const angle = (index / 24) * Math.PI * 2;
@@ -666,9 +654,9 @@ export function RandomNameGame() {
 
       students.forEach((student, index) => {
         const faded = noRepeatRef.current && caughtIndexesRef.current.includes(index) ? 0.62 : 1;
-        projectLabel(labels[index], student.rig.group.position, 4.05, faded);
+        projectLabel(labels[index], student.rig.group.position, 3.15, faded);
       });
-      projectLabel(teacherLabel, teacherRig.group.position, 4.45, 1);
+      projectLabel(teacherLabel, teacherRig.group.position, 4.1, 1);
 
       renderer.render(scene, camera);
       frame = window.requestAnimationFrame(animate);
