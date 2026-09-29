@@ -294,8 +294,9 @@ export function RandomNameGame() {
       }
     }
 
-    const selectedIndex = candidates[pickRandomIndex(candidates.length)];
-    targetIndexRef.current = selectedIndex;
+    if (candidates.length === 0) return;
+
+    targetIndexRef.current = null;
     huntingRef.current = true;
     huntStartedAtRef.current = performance.now();
     setHunting(true);
@@ -469,8 +470,26 @@ export function RandomNameGame() {
     const clock = new THREE.Clock();
     let frame = 0;
     let teacherPhase = 0;
-    let teacherWanderTarget = randomPoint(3.3);
-    let teacherNextTurn = 0;
+    const keys = new Set<string>();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      if (["w", "a", "s", "d"].includes(key)) {
+        event.preventDefault();
+        keys.add(key);
+      }
+    };
+
+    const onKeyUp = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      if (["w", "a", "s", "d"].includes(key)) {
+        event.preventDefault();
+        keys.delete(key);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown, { passive: false });
+    window.addEventListener("keyup", onKeyUp, { passive: false });
 
     const resize = () => {
       const width = Math.max(1, mount.clientWidth);
@@ -569,44 +588,22 @@ export function RandomNameGame() {
       const position = teacherRig.group.position;
       const velocity = new THREE.Vector3();
 
-      if (!huntingRef.current) {
-        if (now > teacherNextTurn || position.distanceTo(teacherWanderTarget) < 0.7) {
-          teacherWanderTarget = randomPoint(3.2);
-          teacherNextTurn = now + 1600 + Math.random() * 1800;
-        }
-        velocity.copy(teacherWanderTarget).sub(position).setY(0);
-        if (velocity.lengthSq() > 0.01) velocity.normalize().multiplyScalar(0.55);
-      } else {
-        const age = now - huntStartedAtRef.current;
-        const targetIndex = targetIndexRef.current;
+      const inputX = (keys.has("d") ? 1 : 0) - (keys.has("a") ? 1 : 0);
+      const inputZ = (keys.has("s") ? 1 : 0) - (keys.has("w") ? 1 : 0);
 
-        if (age < 1050) {
-          velocity.set(0, 0, 0);
-          const introScale = THREE.MathUtils.clamp(age / 450, 0.1, 1);
-          teacherRig.group.scale.setScalar(1.12 * introScale);
-        } else if (age < 2250) {
-          teacherRig.group.scale.setScalar(1.12);
-          const spinAngle = age * 0.004;
-          velocity.set(Math.sin(spinAngle), 0, Math.cos(spinAngle)).multiplyScalar(1.35);
-        } else if (targetIndex !== null && students[targetIndex]) {
-          const target = students[targetIndex].rig.group.position;
-          velocity.copy(target).sub(position).setY(0);
-          const distance = velocity.length();
-          if (distance < 0.88) {
-            finishCatch(targetIndex);
-            velocity.set(0, 0, 0);
-          } else {
-            velocity.normalize().multiplyScalar(age > 4300 ? 5.9 : 4.6);
-          }
-        }
+      if (inputX !== 0 || inputZ !== 0) {
+        velocity
+          .set(inputX, 0, inputZ)
+          .normalize()
+          .multiplyScalar(TEACHER_MOVE_SPEED * (huntingRef.current ? 1 : 0.82));
       }
 
       position.x += velocity.x * dt;
       position.z += velocity.z * dt;
 
       const radius = Math.hypot(position.x, position.z);
-      if (radius > ARENA_RADIUS - 0.8) {
-        const scale = (ARENA_RADIUS - 0.8) / radius;
+      if (radius > ARENA_RADIUS - 0.9) {
+        const scale = (ARENA_RADIUS - 0.9) / radius;
         position.x *= scale;
         position.z *= scale;
       }
@@ -615,13 +612,35 @@ export function RandomNameGame() {
         teacherRig.group.rotation.y = THREE.MathUtils.lerp(
           teacherRig.group.rotation.y,
           Math.atan2(velocity.x, velocity.z),
-          Math.min(1, dt * 8),
+          Math.min(1, dt * 10),
         );
       }
 
-      teacherPhase += dt * (huntingRef.current ? 11 : 4.5);
-      animateWalk(teacherRig, teacherPhase, Math.min(1, velocity.length() / 2.4));
-      teacherRig.group.position.y = Math.abs(Math.sin(teacherPhase * 2)) * (huntingRef.current ? 0.07 : 0.025);
+      if (huntingRef.current && now - huntStartedAtRef.current > 1150 && !caughtRef.current) {
+        let caughtIndex = -1;
+        let closestDistance = Infinity;
+
+        students.forEach((student, index) => {
+          if (noRepeatRef.current && caughtIndexesRef.current.includes(index)) return;
+          const distance = position.distanceTo(student.rig.group.position);
+          if (distance < 0.82 && distance < closestDistance) {
+            closestDistance = distance;
+            caughtIndex = index;
+          }
+        });
+
+        if (caughtIndex >= 0) finishCatch(caughtIndex);
+      }
+
+      teacherPhase += dt * (velocity.lengthSq() > 0.03 ? 12.5 : 3.2);
+      animateWalk(
+        teacherRig,
+        teacherPhase,
+        Math.min(1, velocity.length() / TEACHER_MOVE_SPEED),
+      );
+      teacherRig.group.position.y =
+        Math.abs(Math.sin(teacherPhase * 2)) *
+        (velocity.lengthSq() > 0.03 ? 0.065 : 0.02);
     };
 
     const animate = () => {
@@ -631,23 +650,18 @@ export function RandomNameGame() {
       updateStudents(dt, now);
       updateTeacher(dt, now);
 
-      const huntingAge = huntingRef.current ? now - huntStartedAtRef.current : 0;
       const cameraTarget = teacherRig.group.position.clone();
-      if (huntingRef.current && targetIndexRef.current !== null && students[targetIndexRef.current]) {
-        cameraTarget.lerp(students[targetIndexRef.current].rig.group.position, 0.34);
-      }
-      cameraTarget.y = 1.5;
+      cameraTarget.y = 1.35;
 
       const desiredCamera = huntingRef.current
-        ? new THREE.Vector3(cameraTarget.x * 0.15, 14.2, 18.8 + cameraTarget.z * 0.08)
-        : new THREE.Vector3(0, 18, 23);
+        ? new THREE.Vector3(
+            teacherRig.group.position.x * 0.12,
+            20.2,
+            28.5 + teacherRig.group.position.z * 0.08,
+          )
+        : new THREE.Vector3(0, 22.5, 31);
 
-      if (huntingRef.current && huntingAge > 2200) {
-        desiredCamera.x += Math.sin(now * 0.035) * 0.09;
-        desiredCamera.y += Math.sin(now * 0.051) * 0.055;
-      }
-
-      camera.position.lerp(desiredCamera, Math.min(1, dt * 2.8));
+      camera.position.lerp(desiredCamera, Math.min(1, dt * 2.5));
       camera.lookAt(cameraTarget);
 
       students.forEach((student, index) => {
@@ -665,6 +679,8 @@ export function RandomNameGame() {
     return () => {
       window.cancelAnimationFrame(frame);
       observer.disconnect();
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
       labels.forEach((label) => label.remove());
       teacherLabel.remove();
 
@@ -740,6 +756,11 @@ export function RandomNameGame() {
         <div className="random-three-scene" ref={sceneMountRef} />
         <div className="random-label-layer" ref={labelLayerRef} />
 
+        <div className="random-control-hint" aria-hidden="true">
+          <b>W A S D</b>
+          <span>Điều khiển giáo viên</span>
+        </div>
+
         <div className="random-arena-controls">
           <button className="hunt-button" disabled={hunting || Boolean(caught)} onClick={startHunt} type="button">
             {hunting ? "ĐANG SĂN..." : "🙈 BẮT ĐẦU SĂN"}
@@ -754,8 +775,8 @@ export function RandomNameGame() {
         {hunting && (
           <div className="hunter-announcement" key={huntRound} aria-hidden="true">
             <span>⚠</span>
-            <strong>THỢ SĂN XUẤT HIỆN</strong>
-            <small>CHẠY!</small>
+            <strong>BỊT MẮT BẮT DÊ BẮT ĐẦU!</strong>
+            <small>WASD · ĐUỔI BẮT!</small>
           </div>
         )}
 
