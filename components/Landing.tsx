@@ -62,9 +62,9 @@ export function Landing() {
       <div className="bubble bubble-two" />
       <section className="landing-card">
         <div className="game-logo" aria-hidden="true"><span>4.0</span></div>
-        <p className="landing-kicker">TIN HỌC 10 · BÀI 2</p>
+        <p className="landing-kicker">ROBOTICS RB101 · BIG MOUTH I & II</p>
         <h1>Đại chiến<br /><em>Cyber City</em></h1>
-        <p className="landing-lead">Vào phòng, chọn thật nhanh, leo bảng xếp hạng!</p>
+        <p className="landing-lead">20 câu về cấu tạo, lắp ráp và lập trình Big Mouth. Vào phòng và cùng thử sức!</p>
 
         <div className="entry-grid">
           <form className="join-panel" onSubmit={joinGame}>
