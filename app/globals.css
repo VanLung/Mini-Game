@@ -4041,7 +4041,6 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   --rain-index: 0;
   position: absolute;
   top: -12%;
-  left: calc((var(--rain-index) * 37) % 101 * 1%);
   width: 2px;
   height: 38px;
   border-radius: 2px;
