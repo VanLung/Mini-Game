@@ -571,6 +571,24 @@ export function StreetRandomGame() {
             <span>XE ĐẨY</span>
             <i>●</i><i>●</i>
           </div>
+
+          <div className="street-npc npc-banhmi" aria-hidden="true">
+            <div className="street-npc-speech">Bánh mì nóng đây!</div>
+            <div className="street-npc-body"><i /><b /></div>
+            <div className="street-npc-pushcart"><span>🥖</span><i /><i /></div>
+          </div>
+
+          <div className="street-npc npc-trada" aria-hidden="true">
+            <div className="street-npc-speech">Trà đá mát lạnh!</div>
+            <div className="street-npc-body"><i /><b /></div>
+            <div className="street-npc-pushcart blue"><span>🧋</span><i /><i /></div>
+          </div>
+
+          <div className="street-npc npc-vechai" aria-hidden="true">
+            <div className="street-npc-speech">Ai ve chai hông?</div>
+            <div className="street-npc-body"><i /><b /></div>
+            <div className="street-npc-pushcart green"><span>♻</span><i /><i /></div>
+          </div>
         </div>
 
         <div className="street-road">
@@ -579,14 +597,63 @@ export function StreetRandomGame() {
           <div className="street-scooter scooter-b">🛵</div>
         </div>
 
+        {streetEvent && (
+          <div className={"street-live-event event-" + streetEvent.kind} key={streetEvent.id}>
+            <div className="street-event-label">
+              <small>SỰ KIỆN KHU PHỐ</small>
+              <b>{streetEvent.title}</b>
+              <span>{streetEvent.subtitle}</span>
+            </div>
+
+            {streetEvent.kind === "icecream" && (
+              <div className="street-event-icecream">
+                <div>🍦</div>
+                <b>XE KEM</b>
+                <i /><i />
+              </div>
+            )}
+
+            {streetEvent.kind === "bus" && (
+              <div className="street-event-bus">
+                <small>08</small>
+                <strong>XE BUÝT</strong>
+                <span>● ● ●</span>
+                <i /><i />
+              </div>
+            )}
+
+            {streetEvent.kind === "vendor" && (
+              <div className="street-event-vendor">
+                <span>📣</span>
+                <b>BÁNH BAO NÓNG ĐÂY!</b>
+              </div>
+            )}
+
+            {streetEvent.kind === "rain" && (
+              <div className="street-event-rain" aria-hidden="true">
+                {Array.from({ length: 28 }, (_, index) => (
+                  <i key={index} style={{ "--rain-index": index } as CSSProperties} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="street-characters">
           {names.map((name, index) => {
             const wasCalled = noRepeat && called.includes(index);
             const isAbducted = abducted.includes(index);
-            const hue = (index * 57 + name.length * 23) % 360;
+            const variant = stringHash(name + ":" + index);
+            const hue = variant % 360;
+            const hairVariant = variant % 4;
+            const accessoryVariant = Math.floor(variant / 7) % 5;
+            const bodyVariant = Math.floor(variant / 13) % 3;
             const style = {
               "--shirt": "hsl(" + hue + " 62% 55%)",
-              "--pants": "hsl(" + ((hue + 180) % 360) + " 35% 32%)",
+              "--shirt-alt":
+                "hsl(" + ((hue + 34) % 360) + " 58% 46%)",
+              "--pants":
+                "hsl(" + ((hue + 180) % 360) + " 35% 32%)",
             } as CSSProperties;
 
             return (
@@ -604,9 +671,10 @@ export function StreetRandomGame() {
                 style={style}
               >
                 <span className="street-name-tag">{name}</span>
-                <div className="street-person-body">
-                  <i className="street-hair" />
+                <div className={"street-person-body body-" + bodyVariant}>
+                  <i className={"street-hair hair-" + hairVariant} />
                   <i className="street-head" />
+                  <i className={"street-accessory accessory-" + accessoryVariant} />
                   <i className="street-shirt" />
                   <i className="street-arm arm-left" />
                   <i className="street-arm arm-right" />
