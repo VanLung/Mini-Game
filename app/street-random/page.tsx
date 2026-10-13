@@ -1,6 +1,5 @@
-import "./street-random.css";
-import { StreetRandomGame } from "@/components/StreetRandomGame";
+import { redirect } from "next/navigation";
 
 export default function StreetRandomPage() {
-  return <StreetRandomGame />;
+  redirect("/random-name");
 }
