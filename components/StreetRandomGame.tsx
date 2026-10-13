@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-const STORAGE_KEY = "lunix-street-random-class-v3";
+const STORAGE_KEY = "lunix-street-random-class-v4";
 
 const BACKGROUND_URL =
   "https://opengameart.org/sites/default/files/2dpixx_town_bg_0.png";
@@ -11,36 +11,27 @@ const BACKGROUND_URL =
 const KENNEY_ROOT =
   "https://raw.githubusercontent.com/ETdoFresh/kenney.nl/master/kenney_tooncharacters1";
 
-const STUDENT_ASSETS = [
+const CHARACTER_ASSETS = [
   KENNEY_ROOT + "/Male%20person/PNG/Poses%20HD/character_malePerson_run0.png",
   KENNEY_ROOT + "/Female%20person/PNG/Poses%20HD/character_femalePerson_run0.png",
   KENNEY_ROOT + "/Male%20adventurer/PNG/Poses%20HD/character_maleAdventurer_run0.png",
   KENNEY_ROOT + "/Female%20adventurer/PNG/Poses%20HD/character_femaleAdventurer_run0.png",
 ] as const;
 
-const TEACHER_ASSET =
-  KENNEY_ROOT + "/Male%20person/PNG/Poses%20HD/character_malePerson_cheer0.png";
+type GamePhase =
+  | "idle"
+  | "ufo-enter"
+  | "lifting"
+  | "abducting"
+  | "fainted"
+  | "result";
 
-const FUNNY_LINES = [
-  "Ủa thầy bịt mắt thiệt không vậy? 😭",
-  "Kế hoạch đào tẩu chính thức phá sản.",
-  "Yêu cầu VAR! Em nghi có gian lận!",
-  "Chạy hết công suất rồi mà vẫn bị tóm. 🥲",
-  "Đồng đội đâu? Sao bỏ tôi lại vậy?",
-  "NPC này vừa bị giáo viên phát hiện.",
-  "Em nghĩ chúng ta nên thương lượng...",
-  "Một phút mặc niệm cho chiến thuật vừa rồi.",
-  "Báo động đỏ! Em đã bị bắt sống!",
-  "Tưởng thoát rồi, ai ngờ thầy cao tay hơn.",
-  "Xin tha, em còn bài tập chưa làm!",
-  "Thầy nghe tiếng bước chân của em hả?",
-  "Không thể tin được! Em là người được chọn.",
-];
+type Activity = "walk" | "drink" | "sweep";
+type Outfit = "street" | "baba" | "briefs";
 
 type Winner = {
   index: number;
   name: string;
-  quote: string;
 };
 
 function parseNames(value: string) {
@@ -50,7 +41,7 @@ function parseNames(value: string) {
     .filter(Boolean);
 }
 
-function stringHash(value: string) {
+function hashString(value: string) {
   let hash = 2166136261;
   for (let index = 0; index < value.length; index += 1) {
     hash ^= value.charCodeAt(index);
@@ -62,23 +53,58 @@ function stringHash(value: string) {
 function randomIndex(max: number) {
   if (max <= 1) return 0;
   if (typeof crypto !== "undefined" && crypto.getRandomValues) {
-    const values = new Uint32Array(1);
-    crypto.getRandomValues(values);
-    return Math.floor((values[0] / 4294967296) * max);
+    const buffer = new Uint32Array(1);
+    crypto.getRandomValues(buffer);
+    return Math.floor((buffer[0] / 4294967296) * max);
   }
   return Math.floor(Math.random() * max);
 }
 
-function shuffled(values: number[]) {
+function shuffle(values: number[]) {
   const next = [...values];
-  for (let i = next.length - 1; i > 0; i -= 1) {
-    const j = randomIndex(i + 1);
-    [next[i], next[j]] = [next[j], next[i]];
+  for (let index = next.length - 1; index > 0; index -= 1) {
+    const swapIndex = randomIndex(index + 1);
+    [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
   }
   return next;
 }
 
-function playCue(kind: "hunt" | "caught", muted: boolean) {
+function characterAsset(name: string, index: number) {
+  return CHARACTER_ASSETS[hashString(name + ":" + index) % CHARACTER_ASSETS.length];
+}
+
+function activityFor(name: string, index: number): Activity {
+  const activities: Activity[] = ["walk", "drink", "sweep"];
+  return activities[hashString("activity:" + name + ":" + index) % activities.length];
+}
+
+function outfitFor(name: string, index: number): Outfit {
+  const outfits: Outfit[] = ["street", "baba", "briefs"];
+  return outfits[hashString("outfit:" + name + ":" + index) % outfits.length];
+}
+
+function placement(name: string, index: number, total: number) {
+  const hash = hashString("spot:" + name + ":" + index);
+  const lanes = total >= 120 ? 7 : total >= 80 ? 6 : total >= 48 ? 5 : 4;
+  const lane = index % lanes;
+  const column = Math.floor(index / lanes);
+  const columns = Math.max(1, Math.ceil(total / lanes));
+  const left = 3 + ((column + 0.5) / columns) * 94;
+  const sidewalkTop = 61 + lane * (24 / Math.max(1, lanes - 1));
+  const jitter = (((hash >> 7) % 100) / 100 - 0.5) * 2.5;
+
+  return {
+    left: Math.min(98, Math.max(2, left)),
+    top: Math.min(88, sidewalkTop + jitter),
+    delay: -((hash % 900) / 100),
+    duration: 5 + ((hash >> 5) % 45) / 10,
+    drift: 9 + ((hash >> 10) % 18),
+    recover: 3 + ((hash >> 14) % 21) / 10,
+    flip: hash % 2 === 0 ? 1 : -1,
+  };
+}
+
+function playCue(kind: "ufo" | "beam" | "result", muted: boolean) {
   if (muted) return;
   try {
     const AudioContextClass =
@@ -88,49 +114,22 @@ function playCue(kind: "hunt" | "caught", muted: boolean) {
     const audio = new AudioContextClass();
     const oscillator = audio.createOscillator();
     const gain = audio.createGain();
+    oscillator.type = kind === "result" ? "square" : "sine";
 
-    oscillator.type = kind === "caught" ? "square" : "sine";
-    oscillator.frequency.setValueAtTime(
-      kind === "caught" ? 260 : 360,
-      audio.currentTime,
-    );
-    oscillator.frequency.exponentialRampToValueAtTime(
-      kind === "caught" ? 110 : 820,
-      audio.currentTime + 0.3,
-    );
-    gain.gain.setValueAtTime(0.09, audio.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.36);
+    const start = kind === "ufo" ? 180 : kind === "beam" ? 420 : 320;
+    const end = kind === "ufo" ? 540 : kind === "beam" ? 1100 : 140;
+    oscillator.frequency.setValueAtTime(start, audio.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(end, audio.currentTime + 0.42);
+
+    gain.gain.setValueAtTime(0.07, audio.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.46);
     oscillator.connect(gain).connect(audio.destination);
     oscillator.start();
-    oscillator.stop(audio.currentTime + 0.38);
+    oscillator.stop(audio.currentTime + 0.48);
     oscillator.addEventListener("ended", () => void audio.close());
   } catch {
     // Trình duyệt có thể chặn AudioContext trước lần tương tác đầu tiên.
   }
-}
-
-function studentAsset(name: string, index: number) {
-  return STUDENT_ASSETS[stringHash(name + ":" + index) % STUDENT_ASSETS.length];
-}
-
-function placement(name: string, index: number, total: number) {
-  const hash = stringHash(name + ":" + index);
-  const rows = total > 96 ? 7 : total > 60 ? 6 : total > 34 ? 5 : 4;
-  const row = index % rows;
-  const column = Math.floor(index / rows);
-  const columns = Math.max(1, Math.ceil(total / rows));
-  const baseX = ((column + 0.5) / columns) * 92 + 4;
-  const jitterX = ((hash % 100) / 100 - 0.5) * Math.min(5, 80 / columns);
-  const baseY = 42 + row * (45 / Math.max(1, rows - 1));
-  const jitterY = (((hash >> 8) % 100) / 100 - 0.5) * 3.5;
-  return {
-    left: Math.max(2, Math.min(98, baseX + jitterX)),
-    top: Math.max(40, Math.min(91, baseY + jitterY)),
-    delay: -((hash % 900) / 100),
-    duration: 4.5 + ((hash >> 4) % 35) / 10,
-    drift: 10 + ((hash >> 10) % 16),
-    flip: hash % 2 === 0 ? 1 : -1,
-  };
 }
 
 function Setup({
@@ -155,43 +154,47 @@ function Setup({
   const count = parseNames(draft).length;
 
   return (
-    <main className="street3-setup">
-      <div className="street3-setup-bg" aria-hidden="true">
+    <main className="street4-setup">
+      <div className="street4-bg" aria-hidden="true">
         <img src={BACKGROUND_URL} alt="" />
       </div>
 
-      <header className="street3-topline">
+      <header className="street4-topline">
         <Link href="/">⌂ Game Hub</Link>
         <span>Random Name · Khu Phố Gọi Tên</span>
       </header>
 
-      <section className="street3-setup-grid">
-        <div className="street3-hero">
-          <div className="street3-title-board">
+      <section className="street4-setup-grid">
+        <div className="street4-setup-hero">
+          <div className="street4-title-board">
             <small>ROBO LUNIX · RANDOM NAME</small>
             <h1>KHU PHỐ<br />GỌI TÊN</h1>
-            <p>Hôm nay ai sẽ được gọi?</p>
+            <p>UFO sẽ bắt ai đi mất?</p>
           </div>
 
-          <div className="street3-hero-teacher" aria-hidden="true">
-            <div className="street3-teacher-art">
-              <img src={TEACHER_ASSET} alt="" />
-              <i className="street3-blindfold" />
+          <div className="street4-setup-ufo" aria-hidden="true">
+            <div className="street4-ufo">
+              <i className="street4-ufo-dome" />
+              <i className="street4-ufo-body" />
+              <i className="street4-ufo-light l1" />
+              <i className="street4-ufo-light l2" />
+              <i className="street4-ufo-light l3" />
+              <i className="street4-ufo-light l4" />
             </div>
           </div>
 
-          <div className="street3-hero-students" aria-hidden="true">
-            {STUDENT_ASSETS.slice(0, 3).map((src, index) => (
+          <div className="street4-setup-cast" aria-hidden="true">
+            {CHARACTER_ASSETS.slice(0, 3).map((src, index) => (
               <img key={src} src={src} alt="" style={{ "--i": index } as React.CSSProperties} />
             ))}
           </div>
         </div>
 
-        <div className="street3-form-card">
-          <div className="street3-form-heading">
+        <div className="street4-form-card">
+          <div className="street4-form-heading">
             <div>
               <small>DANH SÁCH LỚP</small>
-              <h2>Nhập danh sách học sinh</h2>
+              <h2>Nhập danh sách nhân vật</h2>
             </div>
             <strong>{count}</strong>
           </div>
@@ -203,39 +206,34 @@ function Setup({
             placeholder={"Nguyễn Gia Vỹ\nTrần Minh Triết\nLê Nhất Phi\nNguyễn Ngọc Anh\n..."}
           />
 
-          <p className="street3-hint">
-            Mỗi dòng một tên. Có thể dán trực tiếp từ Excel/Google Sheets; hỗ trợ dấu phẩy, dấu chấm phẩy và tab.
+          <p className="street4-hint">
+            Mỗi dòng một tên. Có thể dán trực tiếp từ Excel hoặc Google Sheets.
           </p>
 
-          <div className="street3-options">
+          <div className="street4-options">
             <label>
-              <span>Số bạn mỗi lượt</span>
+              <span>Số người UFO bắt</span>
               <select value={drawCount} onChange={(event) => setDrawCount(Number(event.target.value))}>
-                {[1, 2, 3, 4, 5].map((countValue) => (
-                  <option key={countValue} value={countValue}>{countValue} bạn</option>
-                ))}
+                <option value={1}>1 người</option>
+                <option value={2}>2 người</option>
               </select>
             </label>
 
-            <label className="street3-check">
+            <label className="street4-check">
               <input checked={noRepeat} onChange={(event) => setNoRepeat(event.target.checked)} type="checkbox" />
               <span>
                 <b>Không lặp tên</b>
-                <small>Cho đến khi gọi hết cả lớp</small>
+                <small>Người bị UFO bắt sẽ biến mất cho tới khi reset lượt</small>
               </span>
             </label>
           </div>
 
           {error && <p className="form-error">{error}</p>}
 
-          <button className="street3-enter" onClick={begin} type="button">
-            <span>👥 VÀO KHU PHỐ</span>
+          <button className="street4-enter" onClick={begin} type="button">
+            <span>👽 VÀO KHU PHỐ</span>
             <b>→</b>
           </button>
-
-          <div className="street3-credit">
-            Background: 2DPIXX / OpenGameArt · CC BY 4.0 · Characters: Kenney · CC0
-          </div>
         </div>
       </section>
     </main>
@@ -243,23 +241,37 @@ function Setup({
 }
 
 export function StreetRandomGame() {
-  const huntTimer = useRef<number | null>(null);
+  const timers = useRef<number[]>([]);
+  const selectedRef = useRef<number[]>([]);
+
   const [draft, setDraft] = useState("");
   const [names, setNames] = useState<string[]>([]);
   const [started, setStarted] = useState(false);
   const [noRepeat, setNoRepeat] = useState(true);
   const [drawCount, setDrawCount] = useState(1);
   const [called, setCalled] = useState<number[]>([]);
-  const [hunting, setHunting] = useState(false);
-  const [winners, setWinners] = useState<Winner[]>([]);
+  const [phase, setPhase] = useState<GamePhase>("idle");
   const [selectedIndexes, setSelectedIndexes] = useState<number[]>([]);
+  const [winners, setWinners] = useState<Winner[]>([]);
   const [round, setRound] = useState(0);
   const [muted, setMuted] = useState(false);
   const [error, setError] = useState("");
 
+  const clearTimers = useCallback(() => {
+    for (const timer of timers.current) window.clearTimeout(timer);
+    timers.current = [];
+  }, []);
+
+  const later = useCallback((fn: () => void, ms: number) => {
+    const timer = window.setTimeout(fn, ms);
+    timers.current.push(timer);
+  }, []);
+
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
+      const raw =
+        window.localStorage.getItem(STORAGE_KEY) ||
+        window.localStorage.getItem("lunix-street-random-class-v3");
       if (!raw) return;
       const stored = JSON.parse(raw) as string[];
       if (Array.isArray(stored)) setDraft(stored.filter(Boolean).join("\n"));
@@ -268,99 +280,135 @@ export function StreetRandomGame() {
     }
   }, []);
 
-  useEffect(() => () => {
-    if (huntTimer.current) window.clearTimeout(huntTimer.current);
-  }, []);
+  useEffect(() => clearTimers, [clearTimers]);
 
-  const density =
-    names.length > 120
-      ? "ultra"
-      : names.length > 70
-        ? "dense"
-        : names.length > 40
-          ? "medium"
-          : "normal";
+  const busy = phase !== "idle" && phase !== "result";
 
   const remaining = useMemo(
     () => (noRepeat ? Math.max(0, names.length - called.length) : names.length),
     [called.length, names.length, noRepeat],
   );
 
+  const density =
+    names.length >= 150
+      ? "ultra"
+      : names.length >= 95
+        ? "dense"
+        : names.length >= 55
+          ? "medium"
+          : "normal";
+
   const begin = useCallback(() => {
     const parsed = parseNames(draft);
     if (!parsed.length) {
-      setError("Hãy nhập ít nhất một tên học sinh.");
+      setError("Hãy nhập ít nhất một tên.");
       return;
     }
+
+    clearTimers();
     setError("");
     setNames(parsed);
     setCalled([]);
-    setWinners([]);
+    setPhase("idle");
     setSelectedIndexes([]);
+    setWinners([]);
     setRound(0);
     setStarted(true);
+
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
     } catch {
-      // Không ảnh hưởng game nếu trình duyệt chặn localStorage.
+      // Game vẫn hoạt động nếu trình duyệt chặn localStorage.
     }
-  }, [draft]);
+  }, [clearTimers, draft]);
 
-  const choose = useCallback(() => {
+  const chooseWinners = useCallback(() => {
     let pool = names.map((_, index) => index);
+
     if (noRepeat) {
       const used = new Set(called);
       pool = pool.filter((index) => !used.has(index));
+
       if (!pool.length) {
         setCalled([]);
         pool = names.map((_, index) => index);
       }
     }
-    return shuffled(pool).slice(0, Math.min(drawCount, pool.length));
+
+    return shuffle(pool).slice(0, Math.min(drawCount, pool.length));
   }, [called, drawCount, names, noRepeat]);
 
-  const startHunt = useCallback(() => {
-    if (hunting || winners.length || !names.length) return;
-    const selected = choose();
+  const startRandom = useCallback(() => {
+    if (busy || winners.length || !names.length) return;
+
+    const selected = chooseWinners();
     if (!selected.length) return;
 
+    clearTimers();
+    selectedRef.current = selected;
+    setSelectedIndexes([]);
+    setWinners([]);
     setRound((value) => value + 1);
-    setSelectedIndexes(selected);
-    setHunting(true);
-    playCue("hunt", muted);
+    setPhase("ufo-enter");
+    playCue("ufo", muted);
 
-    if (huntTimer.current) window.clearTimeout(huntTimer.current);
-    huntTimer.current = window.setTimeout(() => {
-      const result = selected.map((index) => ({
-        index,
-        name: names[index],
-        quote: FUNNY_LINES[randomIndex(FUNNY_LINES.length)],
-      }));
+    later(() => {
+      setPhase("lifting");
+      playCue("beam", muted);
+    }, 950);
 
+    later(() => {
+      setSelectedIndexes(selectedRef.current);
+      setPhase("abducting");
+    }, 2600);
+
+    later(() => {
+      const picked = selectedRef.current;
       if (noRepeat) {
         setCalled((current) => {
           const next = [...current];
-          for (const index of selected) if (!next.includes(index)) next.push(index);
+          for (const index of picked) if (!next.includes(index)) next.push(index);
           return next;
         });
       }
+      setPhase("fainted");
+    }, 3900);
 
-      setHunting(false);
-      setWinners(result);
-      playCue("caught", muted);
-    }, 3300);
-  }, [choose, hunting, muted, names, noRepeat, winners.length]);
+    later(() => {
+      const picked = selectedRef.current;
+      setWinners(picked.map((index) => ({ index, name: names[index] })));
+      setPhase("result");
+      playCue("result", muted);
+    }, 4800);
+  }, [
+    busy,
+    chooseWinners,
+    clearTimers,
+    later,
+    muted,
+    names,
+    noRepeat,
+    winners.length,
+  ]);
 
   const continueRound = useCallback(() => {
-    setWinners([]);
+    clearTimers();
     setSelectedIndexes([]);
-  }, []);
+    selectedRef.current = [];
+    setWinners([]);
+    setPhase("idle");
+  }, [clearTimers]);
 
   const resetCycle = useCallback(() => {
+    clearTimers();
     setCalled([]);
-    setWinners([]);
     setSelectedIndexes([]);
-  }, []);
+    selectedRef.current = [];
+    setWinners([]);
+    setPhase("idle");
+  }, [clearTimers]);
+
+  const activeNames = noRepeat ? names.filter((_, index) => !called.includes(index)) : names;
 
   if (!started) {
     return (
@@ -378,40 +426,72 @@ export function StreetRandomGame() {
   }
 
   return (
-    <main className="street3-game" data-density={density}>
-      <div className="street3-stage-bg" aria-hidden="true">
+    <main className="street4-game" data-density={density} data-phase={phase}>
+      <div className="street4-bg" aria-hidden="true">
         <img src={BACKGROUND_URL} alt="" />
       </div>
-      <div className="street3-stage-shade" />
+      <div className="street4-scene-tone" />
 
-      <header className="street3-gamebar">
+      <header className="street4-gamebar">
         <Link href="/">⌂ Game Hub</Link>
 
-        <div className="street3-stats">
-          <span><small>HỌC SINH</small><b>{names.length}</b></span>
-          <span><small>CHƯA GỌI</small><b>{noRepeat ? remaining : "∞"}</b></span>
-          <span><small>LƯỢT</small><b>{round}</b></span>
+        <div className="street4-stats">
+          <span><small>TRONG KHU PHỐ</small><b>{activeNames.length}</b></span>
+          <span><small>CHƯA BỊ BẮT</small><b>{noRepeat ? remaining : "∞"}</b></span>
+          <span><small>LƯỢT UFO</small><b>{round}</b></span>
         </div>
 
-        <div className="street3-actions">
-          <button onClick={() => setMuted((value) => !value)} type="button">{muted ? "🔇" : "🔊"}</button>
-          {noRepeat && <button disabled={hunting} onClick={resetCycle} type="button">↻ Reset lượt</button>}
-          <button disabled={hunting} onClick={() => setStarted(false)} type="button">✎ Sửa danh sách</button>
+        <div className="street4-actions">
+          <button onClick={() => setMuted((value) => !value)} type="button">
+            {muted ? "🔇" : "🔊"}
+          </button>
+          {noRepeat && (
+            <button disabled={busy} onClick={resetCycle} type="button">
+              ↻ Reset lượt
+            </button>
+          )}
+          <button disabled={busy} onClick={() => setStarted(false)} type="button">
+            ✎ Sửa danh sách
+          </button>
         </div>
       </header>
 
-      <section className={hunting ? "street3-arena is-hunting" : "street3-arena"}>
-        <div className="street3-crowd">
+      <section className="street4-world">
+        <div className={"street4-ufo-wrap phase-" + phase}>
+          <div className="street4-ufo">
+            <i className="street4-ufo-dome" />
+            <i className="street4-ufo-body" />
+            <i className="street4-ufo-light l1" />
+            <i className="street4-ufo-light l2" />
+            <i className="street4-ufo-light l3" />
+            <i className="street4-ufo-light l4" />
+          </div>
+          <div className="street4-beam" />
+        </div>
+
+        <div className="street4-sidewalk-crowd">
           {names.map((name, index) => {
-            const spot = placement(name, index, names.length);
+            const wasTaken = noRepeat && called.includes(index);
             const selected = selectedIndexes.includes(index);
-            const wasCalled = noRepeat && called.includes(index);
+            if (wasTaken && phase === "idle") return null;
+
+            const spot = placement(name, index, names.length);
+            const activity = activityFor(name, index);
+            const outfit = outfitFor(name, index);
+            const isSurvivor =
+              phase === "fainted" &&
+              !selectedIndexes.includes(index) &&
+              !wasTaken;
+
             return (
               <div
                 className={[
-                  "street3-student",
+                  "street4-person",
+                  "activity-" + activity,
+                  "outfit-" + outfit,
                   selected ? "is-selected" : "",
-                  wasCalled ? "was-called" : "",
+                  isSurvivor ? "is-fainted" : "",
+                  wasTaken ? "was-taken" : "",
                 ].filter(Boolean).join(" ")}
                 key={index}
                 style={{
@@ -420,70 +500,82 @@ export function StreetRandomGame() {
                   "--delay": spot.delay + "s",
                   "--duration": spot.duration + "s",
                   "--drift": spot.drift + "px",
+                  "--recover": spot.recover + "s",
                   "--flip": spot.flip,
                   "--z": Math.round(spot.top),
                 } as React.CSSProperties}
               >
-                <span>{name}</span>
-                <img src={studentAsset(name, index)} alt="" />
+                <div className="street4-name-bubble">{name}</div>
+
+                <div className="street4-person-art">
+                  <img src={characterAsset(name, index)} alt="" />
+                  <i className="street4-costume" aria-hidden="true" />
+                </div>
+
+                {activity === "drink" && (
+                  <div className="street4-prop drink" aria-hidden="true">
+                    <i className="stool" />
+                    <i className="glass">🥤</i>
+                  </div>
+                )}
+
+                {activity === "sweep" && (
+                  <div className="street4-prop sweep" aria-hidden="true">
+                    <i className="broom">🧹</i>
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
 
-        <div className={hunting ? "street3-teacher is-hunting" : "street3-teacher"}>
-          <b>GIÁO VIÊN</b>
-          <div>
-            <img src={TEACHER_ASSET} alt="" />
-            <i className="street3-blindfold" />
-          </div>
-        </div>
-
-        {hunting && (
-          <div className="street3-hunt-banner">
-            <small>🙈 GIÁO VIÊN ĐÃ BỊT MẮT</small>
-            <strong>AI SẼ BỊ BẮT?</strong>
+        {phase !== "idle" && phase !== "result" && (
+          <div className="street4-event-copy">
+            {phase === "ufo-enter" && <strong>🛸 UFO ĐANG TỚI!</strong>}
+            {phase === "lifting" && <strong>TẤT CẢ ĐANG BỊ HÚT LÊN!</strong>}
+            {phase === "abducting" && <strong>UFO ĐANG CHỌN...</strong>}
+            {phase === "fainted" && <strong>💫 NHỮNG NGƯỜI CÒN LẠI ĐÃ XỈU!</strong>}
           </div>
         )}
       </section>
 
-      <div className="street3-control">
+      <div className="street4-control">
         <div>
-          <small>BỊT MẮT BẮT DÊ</small>
-          <span>Random từ toàn bộ {names.length} học sinh · {drawCount} bạn/lượt</span>
+          <small>UFO RANDOM</small>
+          <span>
+            UFO hút cả khu phố lên rồi bắt đi {drawCount} người ngẫu nhiên
+          </span>
         </div>
-        <button disabled={hunting || Boolean(winners.length)} onClick={startHunt} type="button">
-          {hunting ? "ĐANG SĂN..." : "🙈 BẮT ĐẦU SĂN"}
+        <button disabled={busy || Boolean(winners.length)} onClick={startRandom} type="button">
+          {busy ? "UFO ĐANG HOẠT ĐỘNG..." : "🛸 GỌI UFO"}
         </button>
       </div>
 
-      <div className="street3-credit game-credit">
-        Art: 2DPIXX (CC BY 4.0) · Kenney (CC0)
-      </div>
-
       {winners.length > 0 && (
-        <div className="street3-result-backdrop">
-          <section className="street3-result" role="dialog" aria-modal="true">
+        <div className="street4-result-backdrop">
+          <section className="street4-result" role="dialog" aria-modal="true">
             <header>
-              <small>💥 KHU PHỐ VỪA BẮT ĐƯỢC</small>
-              <h2>{winners.length > 1 ? winners.length + " HỌC SINH!" : "ĐÃ BỊ TÓM!"}</h2>
+              <small>🛸 UFO ĐÃ RỜI KHỎI KHU PHỐ</small>
+              <h2>{winners.length === 1 ? "ĐÃ BẮT ĐI 1 NGƯỜI!" : "ĐÃ BẮT ĐI 2 NGƯỜI!"}</h2>
             </header>
 
-            <div className="street3-winners">
+            <div className="street4-winners">
               {winners.map((winner) => (
                 <article key={winner.index}>
-                  <img src={studentAsset(winner.name, winner.index)} alt="" />
+                  <img src={characterAsset(winner.name, winner.index)} alt="" />
                   <div>
+                    <small>ĐÃ BỊ UFO BẮT</small>
                     <h3>{winner.name}</h3>
-                    <p>“{winner.quote}”</p>
                   </div>
                 </article>
               ))}
             </div>
 
             <footer>
-              <span>Kết quả được chọn ngẫu nhiên trước animation.</span>
-              <button onClick={continueRound} type="button">BẮT TIẾP →</button>
+              <span>
+                Những người còn lại sẽ tỉnh lại sau khoảng 3–5 giây và tiếp tục sinh hoạt.
+              </span>
+              <button onClick={continueRound} type="button">TIẾP TỤC →</button>
             </footer>
           </section>
         </div>
