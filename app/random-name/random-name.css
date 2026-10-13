@@ -1,0 +1,159 @@
+.random-name-v3 {
+  --random-red: #df4a36;
+  --random-orange: #f28a2f;
+  --random-yellow: #ffd66a;
+  --random-cream: #fff0c5;
+  --random-ink: #423126;
+}
+
+.street-v2-setup-teacher {
+  position: absolute;
+  z-index: 8;
+  left: 50%;
+  bottom: 18px;
+  width: 116px;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 10px 7px rgba(62, 42, 28, .22));
+}
+
+.street-v2-teacher {
+  position: absolute;
+  z-index: 12;
+  left: 50%;
+  top: 73%;
+  width: clamp(72px, 7vw, 108px);
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  filter: drop-shadow(0 7px 4px rgba(52, 38, 28, .22));
+}
+
+.street-v2-teacher > span {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: -18px;
+  transform: translateX(-50%);
+  padding: 4px 9px;
+  border: 2px solid var(--random-ink);
+  border-radius: 999px;
+  background: var(--random-yellow);
+  color: var(--random-ink);
+  box-shadow: 2px 2px 0 var(--random-ink);
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
+
+.street-v2-teacher-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.street-v2-teacher.is-hunting {
+  animation: random-teacher-search .55s ease-in-out infinite alternate;
+}
+
+.street-v2-teacher-body.is-hunting .teacher-arm-left {
+  transform-origin: 28px 65px;
+  animation: random-teacher-left-arm .38s ease-in-out infinite alternate;
+}
+
+.street-v2-teacher-body.is-hunting .teacher-arm-right {
+  transform-origin: 64px 65px;
+  animation: random-teacher-right-arm .38s ease-in-out infinite alternate;
+}
+
+@keyframes random-teacher-search {
+  from { transform: translate(-50%, -100%) rotate(-5deg); }
+  to { transform: translate(-50%, -100%) rotate(5deg); }
+}
+
+@keyframes random-teacher-left-arm {
+  from { transform: rotate(-7deg); }
+  to { transform: rotate(8deg); }
+}
+
+@keyframes random-teacher-right-arm {
+  from { transform: rotate(8deg); }
+  to { transform: rotate(-7deg); }
+}
+
+.random-name-v3 .street-v2-beam::before {
+  background: linear-gradient(to bottom, rgba(255, 244, 159, .84), rgba(255, 194, 91, .22) 72%, transparent);
+}
+
+.random-name-v3 .street-v2-control-panel button {
+  background: linear-gradient(#ef573e, #d9382e);
+  color: #fff;
+}
+
+.random-name-v3 .street-v2-control-panel button:hover:not(:disabled) {
+  filter: brightness(1.04);
+}
+
+.random-name-v3 .street-v2-draw-notice {
+  background: rgba(255, 240, 197, .95);
+}
+
+.random-name-v3[data-density="dense"] .street-v2-name {
+  max-width: 74px;
+  padding-inline: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 6.5px;
+  opacity: .82;
+}
+
+.random-name-v3[data-density="ultra"] .street-v2-name {
+  max-width: 52px;
+  padding-inline: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 5.5px;
+  opacity: .62;
+}
+
+.random-name-v3[data-density="dense"] .street-v2-student small,
+.random-name-v3[data-density="ultra"] .street-v2-student small {
+  display: none;
+}
+
+.random-name-v3 .street-v2-student.is-abducted .street-v2-name {
+  max-width: 180px;
+  opacity: 1;
+  font-size: 10px;
+  background: #fff4bf;
+  box-shadow: 0 0 0 3px rgba(255, 214, 106, .45), 3px 3px 0 var(--random-ink);
+}
+
+.street-v2-result-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.street-v2-result-copy strong {
+  font-size: clamp(17px, 2.3vw, 25px);
+}
+
+.street-v2-result-copy p {
+  margin: 0;
+  color: #745848;
+  font-size: clamp(10px, 1.2vw, 13px);
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+@media (max-width: 620px) {
+  .street-v2-teacher {
+    top: 72%;
+    width: 68px;
+  }
+
+  .street-v2-setup-teacher {
+    width: 88px;
+  }
+}
