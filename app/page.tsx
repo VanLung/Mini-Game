@@ -12,11 +12,20 @@ const games = [
   },
   {
     href: "/random-name",
-    eyebrow: "RANDOM NAME · KHU PHỐ GỌI TÊN",
+    eyebrow: "RANDOM NAME · BỊT MẮT BẮT DÊ 3D",
     title: "Random Name",
-    description: "Cả lớp chạy trong khu phố Việt Nam 2D, giáo viên bịt mắt săn ngẫu nhiên học sinh theo cơ chế công bằng.",
-    icon: "🙈",
+    description: "Game Random Name cũ: đấu trường 3D, giáo viên bịt mắt bắt học sinh với cơ chế chọn tên ngẫu nhiên.",
+    icon: "🎯",
     className: "hub-card random",
+    status: "Sẵn sàng",
+  },
+  {
+    href: "/street-random",
+    eyebrow: "RANDOM NAME · PHỐ VIỆT 2D",
+    title: "Khu Phố Gọi Tên",
+    description: "Game mới độc lập: khu phố Việt Nam hoạt hình, giáo viên bịt mắt săn học sinh và hiệu ứng gọi tên vui nhộn.",
+    icon: "🏮",
+    className: "hub-card street",
     status: "Mới",
   },
   {
