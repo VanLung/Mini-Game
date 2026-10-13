@@ -1,7 +1,5 @@
-import "../street-random/street-random.css";
-import "./random-name.css";
-import { StreetRandomGame } from "@/components/StreetRandomGame";
+import { RandomNameGame } from "@/components/RandomNameGame";
 
 export default function RandomNamePage() {
-  return <StreetRandomGame />;
+  return <RandomNameGame />;
 }
