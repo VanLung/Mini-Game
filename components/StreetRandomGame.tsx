@@ -175,6 +175,7 @@ export function StreetRandomGame() {
   const calledRef = useRef<number[]>([]);
   const frozenRef = useRef(new Set<number>());
   const roundTokenRef = useRef(0);
+  const drawingRef = useRef(false);
 
   const [draft, setDraft] = useState("");
   const [names, setNames] = useState<string[]>([]);
@@ -212,6 +213,10 @@ export function StreetRandomGame() {
   useEffect(() => {
     calledRef.current = called;
   }, [called]);
+
+  useEffect(() => {
+    drawingRef.current = drawing;
+  }, [drawing]);
 
   useEffect(() => {
     if (!started || names.length === 0) return;
@@ -277,6 +282,10 @@ export function StreetRandomGame() {
       if (stopped) return;
       showTimer = window.setTimeout(() => {
         if (stopped) return;
+        if (drawingRef.current) {
+          schedule();
+          return;
+        }
         setStreetEvent(pickStreetEvent());
         hideTimer = window.setTimeout(() => {
           if (stopped) return;
@@ -360,6 +369,7 @@ export function StreetRandomGame() {
     const token = roundTokenRef.current + 1;
     roundTokenRef.current = token;
     setDrawing(true);
+    setStreetEvent(null);
     setRound((value) => value + 1);
     setWinners([]);
     setAbducted([]);
@@ -632,7 +642,13 @@ export function StreetRandomGame() {
             {streetEvent.kind === "rain" && (
               <div className="street-event-rain" aria-hidden="true">
                 {Array.from({ length: 28 }, (_, index) => (
-                  <i key={index} style={{ "--rain-index": index } as CSSProperties} />
+                  <i
+                    key={index}
+                    style={{
+                      "--rain-index": index,
+                      left: ((index * 37) % 101) + "%",
+                    } as CSSProperties}
+                  />
                 ))}
               </div>
             )}
