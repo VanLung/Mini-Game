@@ -255,6 +255,7 @@ export function StreetRandomGame() {
   const [winners, setWinners] = useState<Winner[]>([]);
   const [round, setRound] = useState(0);
   const [muted, setMuted] = useState(false);
+  const [recovered, setRecovered] = useState(true);
   const [error, setError] = useState("");
 
   const clearTimers = useCallback(() => {
@@ -313,6 +314,7 @@ export function StreetRandomGame() {
     setSelectedIndexes([]);
     setWinners([]);
     setRound(0);
+    setRecovered(true);
     setStarted(true);
 
     try {
@@ -349,6 +351,7 @@ export function StreetRandomGame() {
     setSelectedIndexes([]);
     setWinners([]);
     setRound((value) => value + 1);
+    setRecovered(false);
     setPhase("ufo-enter");
     playCue("ufo", muted);
 
@@ -377,9 +380,13 @@ export function StreetRandomGame() {
     later(() => {
       const picked = selectedRef.current;
       setWinners(picked.map((index) => ({ index, name: names[index] })));
-      setPhase("result");
       playCue("result", muted);
     }, 4800);
+
+    later(() => {
+      setPhase("idle");
+      setRecovered(true);
+    }, 9000);
   }, [
     busy,
     chooseWinners,
@@ -392,12 +399,13 @@ export function StreetRandomGame() {
   ]);
 
   const continueRound = useCallback(() => {
+    if (!recovered) return;
     clearTimers();
     setSelectedIndexes([]);
     selectedRef.current = [];
     setWinners([]);
     setPhase("idle");
-  }, [clearTimers]);
+  }, [clearTimers, recovered]);
 
   const resetCycle = useCallback(() => {
     clearTimers();
@@ -405,6 +413,7 @@ export function StreetRandomGame() {
     setSelectedIndexes([]);
     selectedRef.current = [];
     setWinners([]);
+    setRecovered(true);
     setPhase("idle");
   }, [clearTimers]);
 
@@ -573,9 +582,13 @@ export function StreetRandomGame() {
 
             <footer>
               <span>
-                Những người còn lại sẽ tỉnh lại sau khoảng 3–5 giây và tiếp tục sinh hoạt.
+                {recovered
+                  ? "Những người còn lại đã tỉnh dậy và tiếp tục sinh hoạt."
+                  : "Những người còn lại đang xỉu và sẽ tỉnh lại sau khoảng 3–5 giây..."}
               </span>
-              <button onClick={continueRound} type="button">TIẾP TỤC →</button>
+              <button disabled={!recovered} onClick={continueRound} type="button">
+                {recovered ? "TIẾP TỤC →" : "ĐANG HỒI PHỤC..."}
+              </button>
             </footer>
           </section>
         </div>
