@@ -10,8 +10,8 @@ import {
   useState,
 } from "react";
 
-const STORAGE_KEY = "lunix-street-random-class";
-const MAX_STUDENTS = 60;
+const STORAGE_KEY = "lunix-random-name-class";
+const LEGACY_STORAGE_KEY = "lunix-street-random-class";
 
 type StreetAgent = {
   index: number;
@@ -25,6 +25,7 @@ type StreetAgent = {
 type Winner = {
   index: number;
   name: string;
+  quote: string;
 };
 
 type StreetEventKind = "icecream" | "bus" | "rain" | "vendor";
@@ -35,6 +36,20 @@ type StreetEvent = {
   title: string;
   subtitle: string;
 };
+
+const FUNNY_LINES = [
+  "Ủa thầy/cô bịt mắt thiệt không vậy? 😭",
+  "Kế hoạch đào tẩu chính thức phá sản.",
+  "Em yêu cầu xem lại VAR!",
+  "Chạy hết tốc lực rồi mà vẫn bị bắt. 🥲",
+  "Đồng đội đâu? Sao bỏ em lại vậy?",
+  "Thầy/cô không thấy đường mà vẫn tìm đúng em???",
+  "Em nghĩ chúng ta nên thương lượng...",
+  "Xin tha, em còn bài tập chưa làm!",
+  "Một phút mặc niệm cho chiến thuật vừa rồi.",
+  "Báo động đỏ! Em đã bị bắt sống!",
+  "Em là người được chọn… để bị bắt!",
+];
 
 const STREET_EVENTS: Array<Omit<StreetEvent, "id">> = [
   {
@@ -82,8 +97,7 @@ function parseNames(value: string) {
   return value
     .split(/[\n,;\t]+/)
     .map((name) => name.trim())
-    .filter(Boolean)
-    .slice(0, MAX_STUDENTS);
+    .filter(Boolean);
 }
 
 function shuffle<T>(items: T[]) {
@@ -117,12 +131,22 @@ function pickStreetEvent(): StreetEvent {
   };
 }
 
+function laneCountFor(count: number) {
+  if (count <= 20) return 4;
+  if (count <= 40) return 5;
+  if (count <= 70) return 6;
+  if (count <= 110) return 7;
+  if (count <= 160) return 8;
+  return Math.min(12, 8 + Math.ceil((count - 160) / 60));
+}
+
 function makeAgents(count: number): StreetAgent[] {
+  const laneCount = laneCountFor(count);
   return Array.from({ length: count }, (_, index) => ({
     index,
-    x: 4 + Math.random() * 91,
-    lane: index % 4,
-    speed: 4.2 + Math.random() * 3.2,
+    x: 3 + Math.random() * 93,
+    lane: index % laneCount,
+    speed: 3.7 + Math.random() * 3.4,
     direction: Math.random() > 0.5 ? 1 : -1,
     nextTurnAt: performance.now() + 2600 + Math.random() * 5200,
   }));
@@ -327,6 +351,34 @@ function RetroStudent({
           rx="2.5"
           fill={palette[1]}
         />
+      </g>
+    </svg>
+  );
+}
+
+
+function RetroTeacher({ hunting = false }: { hunting?: boolean }) {
+  return (
+    <svg aria-hidden="true" className="street-v2-teacher-svg" viewBox="0 0 92 138">
+      <ellipse cx="46" cy="131" rx="31" ry="6" fill="rgba(46,42,37,.2)" />
+      <g className={hunting ? "street-v2-teacher-body is-hunting" : "street-v2-teacher-body"}>
+        <path d="M33 90 L29 126" stroke="#2e3442" strokeWidth="13" strokeLinecap="round" />
+        <path d="M59 90 L63 126" stroke="#2e3442" strokeWidth="13" strokeLinecap="round" />
+        <path d="M24 127 h18" stroke="#24282f" strokeWidth="7" strokeLinecap="round" />
+        <path d="M51 127 h18" stroke="#24282f" strokeWidth="7" strokeLinecap="round" />
+
+        <rect x="27" y="56" width="38" height="44" rx="9" fill="#fff7e6" stroke="#4b3b31" strokeWidth="3" />
+        <path d="M46 57 V99" stroke="#c9b79d" strokeWidth="2" />
+        <path className="teacher-arm-left" d="M28 65 Q13 77 16 91" fill="none" stroke="#e5aa7c" strokeWidth="10" strokeLinecap="round" />
+        <path className="teacher-arm-right" d="M64 65 Q79 77 76 91" fill="none" stroke="#e5aa7c" strokeWidth="10" strokeLinecap="round" />
+
+        <rect x="29" y="18" width="34" height="40" rx="14" fill="#e5aa7c" stroke="#4b3b31" strokeWidth="3" />
+        <path d="M27 31 Q28 10 46 10 Q66 10 65 34 Q59 22 50 24 Q40 19 27 31" fill="#2f2927" />
+        <path d="M29 33 Q46 26 63 33 L62 43 Q46 49 30 43Z" fill="#d84e43" stroke="#4b3b31" strokeWidth="2.5" />
+        <path d="M63 36 L79 29 L71 46Z" fill="#d84e43" stroke="#4b3b31" strokeWidth="2.2" />
+        <path d="M40 50 Q46 54 52 50" fill="none" stroke="#9b5e50" strokeWidth="2.2" strokeLinecap="round" />
+
+        <rect x="37" y="61" width="18" height="6" rx="3" fill="#f0ca58" />
       </g>
     </svg>
   );
@@ -538,11 +590,11 @@ function SetupCard({
             <p>ROBO LUNIX · RANDOM NAME</p>
             <h1>Khu Phố Gọi Tên</h1>
             <span>
-              Một khu phố Việt Nam 2D lấy cảm hứng từ webgame đời cũ. Kết quả
-              được random trước; UFO chỉ làm nhiệm vụ công bố.
+              Cả lớp bước vào một khu phố Việt Nam hoạt hình. Giáo viên bịt mắt
+              bắt dê; kết quả được random công bằng trước khi animation bắt đầu.
             </span>
           </div>
-          <div className="street-v2-setup-ufo"><RetroUfo /></div>
+          <div className="street-v2-setup-teacher"><RetroTeacher /></div>
         </div>
 
         <div className="street-v2-form">
@@ -621,7 +673,7 @@ export function StreetRandomGame() {
 
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
+      const raw = window.localStorage.getItem(STORAGE_KEY) ?? window.localStorage.getItem(LEGACY_STORAGE_KEY);
       if (!raw) return;
       const saved = JSON.parse(raw) as string[];
       if (Array.isArray(saved)) {
@@ -674,7 +726,9 @@ export function StreetRandomGame() {
           agent.direction = -1;
         }
 
-        const elementTop = 63 + agent.lane * 5.1;
+        const laneCount = laneCountFor(names.length);
+        const laneSpacing = Math.min(5.1, 24 / Math.max(1, laneCount - 1));
+        const elementTop = 60 + agent.lane * laneSpacing;
         element.style.left = agent.x + "%";
         element.style.top = elementTop + "%";
         element.dataset.direction = String(agent.direction);
@@ -747,11 +801,18 @@ export function StreetRandomGame() {
   }, [called.length, names.length, noRepeat]);
 
   const crowdScale = useMemo(() => {
+    if (names.length >= 220) return 0.38;
+    if (names.length >= 160) return 0.44;
+    if (names.length >= 120) return 0.5;
+    if (names.length >= 90) return 0.56;
+    if (names.length >= 60) return 0.64;
     if (names.length >= 42) return 0.72;
     if (names.length >= 28) return 0.82;
     if (names.length >= 18) return 0.9;
     return 1;
   }, [names.length]);
+
+  const density = names.length >= 120 ? "ultra" : names.length >= 60 ? "dense" : "normal";
 
   const beginGame = useCallback(() => {
     const parsed = parseNames(draft);
@@ -844,6 +905,7 @@ export function StreetRandomGame() {
     const finalWinners = captured.map((index) => ({
       index,
       name: names[index],
+      quote: FUNNY_LINES[Math.floor(Math.random() * FUNNY_LINES.length)],
     }));
 
     if (noRepeat) {
@@ -895,7 +957,8 @@ export function StreetRandomGame() {
 
   return (
     <main
-      className="street-v2-game"
+      className="street-v2-game random-name-v3"
+      data-density={density}
       lang="vi"
       style={{ "--crowd-scale": crowdScale } as CSSProperties}
     >
@@ -968,6 +1031,11 @@ export function StreetRandomGame() {
         })}
       </div>
 
+      <div className={drawing ? "street-v2-teacher is-hunting" : "street-v2-teacher"}>
+        <span>GIÁO VIÊN</span>
+        <RetroTeacher hunting={drawing} />
+      </div>
+
       <div className="street-v2-npc npc-food">
         <div className="street-v2-npc-bubble">Bánh mì nóng đây!</div>
         <RetroStudent variant={104} />
@@ -982,13 +1050,6 @@ export function StreetRandomGame() {
 
       {streetEvent && <EventOverlay event={streetEvent} />}
 
-      {ufoVisible && (
-        <div className={"street-v2-ufo " + (drawing ? "active" : "")}>
-          <RetroUfo />
-          <small>RL-26</small>
-        </div>
-      )}
-
       {beams.map((beam) => (
         <div
           className="street-v2-beam"
@@ -1001,16 +1062,16 @@ export function StreetRandomGame() {
 
       {drawing && (
         <div className="street-v2-draw-notice" key={round}>
-          <small>UFO ĐANG QUÉT KHU PHỐ</small>
-          <strong>AI SẼ LÊN BẢNG?</strong>
+          <small>GIÁO VIÊN ĐÃ BỊT MẮT</small>
+          <strong>AI SẼ BỊ BẮT?</strong>
         </div>
       )}
 
       <div className="street-v2-control-panel">
         <div>
-          <small>RANDOM ENGINE</small>
+          <small>BỊT MẮT BẮT DÊ</small>
           <span>
-            Kết quả được chọn trước animation · {drawCount} bạn/lượt
+            Random công bằng · không giới hạn cứng số học sinh · {drawCount} bạn/lượt
           </span>
         </div>
         <button
@@ -1019,7 +1080,7 @@ export function StreetRandomGame() {
           type="button"
         >
           <i />
-          <span>{drawing ? "ĐANG QUÉT..." : "GỌI TÊN"}</span>
+          <span>{drawing ? "ĐANG SĂN..." : "BẮT ĐẦU SĂN"}</span>
         </button>
       </div>
 
@@ -1029,7 +1090,7 @@ export function StreetRandomGame() {
             <header>
               <div>
                 <small>THÔNG BÁO KHU PHỐ 01</small>
-                <h2>Mời các bạn lên bảng trả bài</h2>
+                <h2>Đã bị tóm!</h2>
               </div>
               <b>ĐÃ CHỌN</b>
             </header>
@@ -1041,7 +1102,10 @@ export function StreetRandomGame() {
                   <div>
                     <RetroStudent variant={stringHash(winner.name + ":" + winner.index)} />
                   </div>
-                  <strong>{winner.name}</strong>
+                  <div className="street-v2-result-copy">
+                    <strong>{winner.name}</strong>
+                    <p>“{winner.quote}”</p>
+                  </div>
                 </article>
               ))}
             </div>
