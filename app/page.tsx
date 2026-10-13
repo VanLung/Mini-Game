@@ -12,9 +12,9 @@ const games = [
   },
   {
     href: "/random-name",
-    eyebrow: "RANDOM NAME · BỊT MẮT BẮT DÊ",
+    eyebrow: "RANDOM NAME · KHU PHỐ GỌI TÊN",
     title: "Random Name",
-    description: "Đưa cả lớp vào đấu trường vòng tròn, giáo viên bịt mắt săn ngẫu nhiên một học sinh.",
+    description: "Cả lớp chạy trong khu phố Việt Nam 2D, giáo viên bịt mắt săn ngẫu nhiên học sinh theo cơ chế công bằng.",
     icon: "🙈",
     className: "hub-card random",
     status: "Mới",
@@ -26,15 +26,6 @@ const games = [
     description: "Đua vịt 3D đầy drama: bánh mì, UFO, dép tổ ong, CSGT ao làng và màn nước rút không ai được tin ai.",
     icon: "🦆",
     className: "hub-card duck",
-    status: "Mới",
-  },
-  {
-    href: "/street-random",
-    eyebrow: "RANDOM NAME · RETRO VIỆT NAM",
-    title: "Khu Phố Gọi Tên",
-    description: "Cả lớp đi dạo trong khu phố 2D, UFO xuất hiện và tóm ngẫu nhiên học sinh lên bảng theo cơ chế công bằng.",
-    icon: "🛸",
-    className: "hub-card street",
     status: "Mới",
   },
   {
