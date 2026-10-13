@@ -27,6 +27,38 @@ type Winner = {
   name: string;
 };
 
+type StreetEventKind = "icecream" | "bus" | "rain" | "vendor";
+
+type StreetEvent = {
+  id: number;
+  kind: StreetEventKind;
+  title: string;
+  subtitle: string;
+};
+
+const STREET_EVENTS: Array<Omit<StreetEvent, "id">> = [
+  {
+    kind: "icecream",
+    title: "Xe kem tuổi thơ",
+    subtitle: "Leng keng... ai nghe tiếng là biết!",
+  },
+  {
+    kind: "bus",
+    title: "Xe buýt ghé trạm",
+    subtitle: "Khu phố tự nhiên đông vui hơn hẳn.",
+  },
+  {
+    kind: "rain",
+    title: "Mưa rào bất chợt",
+    subtitle: "Mưa một chút rồi lại tạnh.",
+  },
+  {
+    kind: "vendor",
+    title: "Hàng rong đi qua",
+    subtitle: "Bánh bao nóng đây...!",
+  },
+];
+
 const SHOP_SIGNS = [
   ["TẠP HÓA CÔ BA", "Có bán mì gói"],
   ["BÁNH MÌ", "Nóng giòn"],
@@ -35,6 +67,20 @@ const SHOP_SIGNS = [
   ["CẮT TÓC", "Gọn gàng"],
   ["XE ÔM", "Có mặt ngay"],
 ];
+
+function stringHash(value: string) {
+  let result = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    result ^= value.charCodeAt(index);
+    result = Math.imul(result, 16777619);
+  }
+  return Math.abs(result >>> 0);
+}
+
+function pickStreetEvent(): StreetEvent {
+  const template = STREET_EVENTS[Math.floor(Math.random() * STREET_EVENTS.length)];
+  return { ...template, id: Date.now() + Math.floor(Math.random() * 10000) };
+}
 
 function parseNames(value: string) {
   return value
@@ -143,6 +189,7 @@ export function StreetRandomGame() {
   const [abducted, setAbducted] = useState<number[]>([]);
   const [winners, setWinners] = useState<Winner[]>([]);
   const [round, setRound] = useState(0);
+  const [streetEvent, setStreetEvent] = useState<StreetEvent | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -215,6 +262,39 @@ export function StreetRandomGame() {
       characterRefs.current.clear();
     };
   }, [names, started]);
+
+  useEffect(() => {
+    if (!started) {
+      setStreetEvent(null);
+      return;
+    }
+
+    let showTimer = 0;
+    let hideTimer = 0;
+    let stopped = false;
+
+    const schedule = () => {
+      if (stopped) return;
+      showTimer = window.setTimeout(() => {
+        if (stopped) return;
+        setStreetEvent(pickStreetEvent());
+        hideTimer = window.setTimeout(() => {
+          if (stopped) return;
+          setStreetEvent(null);
+          schedule();
+        }, 5200);
+      }, 8500 + Math.random() * 6500);
+    };
+
+    schedule();
+
+    return () => {
+      stopped = true;
+      window.clearTimeout(showTimer);
+      window.clearTimeout(hideTimer);
+      setStreetEvent(null);
+    };
+  }, [started]);
 
   useEffect(() => {
     return () => {
