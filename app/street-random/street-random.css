@@ -1,720 +1,881 @@
-/* Street Random v3 — asset-first rebuild */
-.street3-setup,
-.street3-game {
-  --ink: #213047;
-  --cream: #fff6dc;
-  --orange: #f27b21;
-  --red: #e83b30;
-  --yellow: #ffd35f;
-  --panel: rgba(255, 250, 232, .96);
+/* Khu Phố Gọi Tên v4 — UFO abduction flow */
+.street4-setup,
+.street4-game {
+  --ink: #203047;
+  --cream: #fff6da;
+  --orange: #f28122;
+  --red: #df3c2f;
+  --yellow: #ffd86b;
   color: var(--ink);
   font-family: Inter, ui-rounded, "Segoe UI", system-ui, sans-serif;
 }
 
-.street3-setup {
+.street4-setup,
+.street4-game {
   position: relative;
   min-height: 100svh;
   overflow: hidden;
-  padding: 76px 22px 30px;
-  background: #d7a768;
+  isolation: isolate;
+  background: #d6b27d;
 }
-.street3-setup-bg,
-.street3-stage-bg {
+
+.street4-bg {
   position: absolute;
+  z-index: -5;
   inset: 0;
   overflow: hidden;
 }
-.street3-setup-bg::after,
-.street3-stage-bg::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(90deg, rgba(30, 42, 54, .2), transparent 34%, transparent 70%, rgba(30, 42, 54, .12)),
-    linear-gradient(0deg, rgba(117, 62, 21, .22), transparent 44%);
-}
-.street3-setup-bg img,
-.street3-stage-bg img {
+.street4-bg img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   transform: scale(1.04);
-  filter: saturate(1.18) contrast(1.04) brightness(1.03);
+  filter: saturate(1.22) contrast(1.04) brightness(1.05);
 }
-.street3-topline {
+.street4-bg::after {
+  content: "";
   position: absolute;
-  z-index: 20;
-  top: 16px;
-  left: 22px;
-  right: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(13, 31, 48, .04), transparent 56%, rgba(59, 37, 20, .12)),
+    linear-gradient(90deg, rgba(20, 35, 49, .12), transparent 26%, transparent 74%, rgba(20, 35, 49, .09));
 }
-.street3-topline a,
-.street3-topline span {
+
+.street4-topline,
+.street4-gamebar {
+  position: absolute;
+  z-index: 80;
+  top: 13px;
+  left: 14px;
+  right: 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.street4-topline a,
+.street4-topline span,
+.street4-gamebar > a {
   min-height: 40px;
   display: inline-flex;
   align-items: center;
-  padding: 8px 14px;
-  border: 2px solid rgba(28, 43, 61, .88);
+  padding: 8px 13px;
+  border: 2px solid #203246;
   border-radius: 999px;
-  background: rgba(25, 43, 62, .92);
+  background: rgba(28, 48, 67, .94);
   color: #fff;
-  box-shadow: 0 6px 18px rgba(17, 31, 47, .18);
+  box-shadow: 0 6px 18px rgba(21, 34, 47, .16);
   text-decoration: none;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 900;
 }
-.street3-setup-grid {
+
+.street4-setup {
+  padding: 72px 18px 26px;
+}
+.street4-setup-grid {
   position: relative;
-  z-index: 5;
-  width: min(1240px, 100%);
+  z-index: 3;
+  width: min(1220px, 100%);
   min-height: 650px;
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(390px, .8fr);
   margin: 0 auto;
   overflow: hidden;
-  border: 4px solid rgba(255,255,255,.86);
+  border: 4px solid rgba(255,255,255,.82);
   border-radius: 30px;
-  background: rgba(255,255,255,.11);
-  box-shadow: 0 26px 80px rgba(42, 32, 22, .3);
+  box-shadow: 0 28px 80px rgba(44, 32, 21, .3);
+  background: rgba(255,255,255,.12);
   backdrop-filter: blur(2px);
 }
-.street3-hero {
+.street4-setup-hero {
   position: relative;
   min-height: 650px;
   overflow: hidden;
-  background: linear-gradient(110deg, rgba(27, 42, 59, .18), transparent 58%);
 }
-.street3-title-board {
+.street4-title-board {
   position: absolute;
   z-index: 8;
-  left: 34px;
+  left: 30px;
   top: 34px;
-  width: min(430px, calc(100% - 68px));
-  padding: 20px 24px 18px;
-  border: 3px solid #6e371f;
+  width: min(440px, calc(100% - 60px));
+  padding: 19px 24px 18px;
+  border: 3px solid #68371f;
   border-radius: 24px 24px 24px 8px;
-  background: linear-gradient(#8e522c, #63361e);
-  color: #fff8d5;
-  box-shadow: 0 10px 0 rgba(82, 43, 23, .2), inset 0 0 0 3px rgba(255,215,120,.14);
+  background: linear-gradient(#975a2e, #633820);
+  color: #fff;
+  box-shadow: 0 9px 0 rgba(83, 48, 25, .2);
   transform: rotate(-1deg);
 }
-.street3-title-board small {
-  color: #ffdb78;
+.street4-title-board small {
+  color: #ffdd77;
   font-size: 10px;
   font-weight: 950;
   letter-spacing: .16em;
 }
-.street3-title-board h1 {
-  margin: 5px 0 6px;
-  color: #ffe78b;
-  font-size: clamp(42px, 5vw, 72px);
-  line-height: .87;
+.street4-title-board h1 {
+  margin: 6px 0 7px;
+  color: #ffe58d;
+  font-size: clamp(44px, 5vw, 72px);
+  line-height: .88;
   letter-spacing: -.06em;
-  text-shadow: 0 4px 0 #8a2f19, 0 7px 18px rgba(63, 25, 10, .3);
+  text-shadow: 0 4px 0 #8b2f19;
 }
-.street3-title-board p {
+.street4-title-board p {
   margin: 0;
-  color: #fff;
   font-size: 17px;
   font-weight: 850;
 }
-.street3-hero-teacher {
+.street4-setup-ufo {
   position: absolute;
   z-index: 7;
-  left: 31%;
-  bottom: 2%;
-  width: min(310px, 45%);
-  filter: drop-shadow(0 16px 12px rgba(49, 32, 17, .2));
+  left: 50%;
+  top: 25%;
+  width: 280px;
+  transform: translateX(-50%) rotate(-4deg);
+  animation: street4-setup-float 2.8s ease-in-out infinite alternate;
 }
-.street3-teacher-art,
-.street3-teacher > div {
-  position: relative;
+@keyframes street4-setup-float {
+  to { transform: translate(-50%, -13px) rotate(4deg); }
 }
-.street3-teacher-art img,
-.street3-teacher img {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-.street3-blindfold {
+.street4-setup-cast {
   position: absolute;
-  left: 28%;
-  top: 20%;
-  width: 44%;
-  height: 9%;
-  border: 2px solid #711910;
-  border-radius: 999px 999px 36% 36%;
-  background: linear-gradient(#f55347, #c92d25);
-  box-shadow: 0 3px 0 rgba(94, 22, 16, .28);
-  transform: rotate(-4deg);
-}
-.street3-blindfold::after {
-  content: "";
-  position: absolute;
-  right: -24%;
-  top: 28%;
-  width: 33%;
-  height: 32%;
-  border-radius: 50%;
-  background: #d9372c;
-  transform: rotate(20deg);
-}
-.street3-hero-students {
-  position: absolute;
-  z-index: 6;
+  z-index: 5;
   left: 4%;
-  right: 3%;
-  bottom: 2%;
-  height: 44%;
-  pointer-events: none;
+  right: 4%;
+  bottom: 3%;
+  height: 40%;
 }
-.street3-hero-students img {
+.street4-setup-cast img {
   position: absolute;
-  bottom: calc(var(--i) * 12px);
-  width: 22%;
-  max-width: 150px;
-  filter: drop-shadow(0 9px 7px rgba(54, 35, 18, .2));
+  bottom: calc(var(--i) * 8px);
+  width: 20%;
+  max-width: 135px;
+  filter: drop-shadow(0 10px 7px rgba(65,42,20,.2));
 }
-.street3-hero-students img:nth-child(1) { left: 0; transform: rotate(-7deg); }
-.street3-hero-students img:nth-child(2) { right: 0; transform: scaleX(-1) rotate(-5deg); }
-.street3-hero-students img:nth-child(3) { right: 19%; width: 18%; transform: rotate(6deg); }
+.street4-setup-cast img:nth-child(1) { left: 7%; }
+.street4-setup-cast img:nth-child(2) { right: 8%; transform: scaleX(-1); }
+.street4-setup-cast img:nth-child(3) { right: 30%; width: 17%; }
 
-.street3-form-card {
+.street4-form-card {
   position: relative;
-  z-index: 8;
+  z-index: 10;
   padding: 30px;
-  border-left: 3px solid rgba(62, 45, 29, .32);
-  background: var(--panel);
-  backdrop-filter: blur(16px);
+  border-left: 3px solid rgba(68, 48, 29, .28);
+  background: rgba(255, 249, 227, .96);
+  backdrop-filter: blur(14px);
 }
-.street3-form-heading {
+.street4-form-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 12px;
 }
-.street3-form-heading small {
-  color: #d85e1c;
+.street4-form-heading small {
+  color: #d7601d;
   font-size: 10px;
   font-weight: 950;
-  letter-spacing: .16em;
+  letter-spacing: .14em;
 }
-.street3-form-heading h2 {
-  margin: 4px 0 0;
-  font-size: 26px;
+.street4-form-heading h2 {
+  margin: 3px 0 0;
+  font-size: 25px;
   letter-spacing: -.03em;
 }
-.street3-form-heading strong {
+.street4-form-heading strong {
   width: 52px;
   height: 52px;
   display: grid;
   place-items: center;
-  border: 2px solid var(--ink);
-  border-radius: 16px;
+  border: 2px solid #203047;
+  border-radius: 15px;
   background: var(--yellow);
-  box-shadow: 3px 3px 0 var(--ink);
-  font-size: 20px;
+  box-shadow: 3px 3px 0 #203047;
 }
-.street3-form-card textarea {
+.street4-form-card textarea {
   width: 100%;
   min-height: 350px;
   margin-top: 16px;
   resize: vertical;
   padding: 14px 15px;
-  border: 2px solid #bcb5a4;
+  border: 2px solid #c4bcaa;
   border-radius: 14px;
-  outline: none;
+  outline: 0;
   background: #fffdf6;
-  color: #29384b;
+  color: #26374a;
   font-size: 14px;
   font-weight: 700;
   line-height: 1.55;
 }
-.street3-form-card textarea:focus {
+.street4-form-card textarea:focus {
   border-color: var(--orange);
-  box-shadow: 0 0 0 4px rgba(242,123,33,.13);
+  box-shadow: 0 0 0 4px rgba(242,129,34,.13);
 }
-.street3-hint {
-  margin: 9px 2px 0;
-  color: #756f64;
-  font-size: 11px;
-  line-height: 1.4;
+.street4-hint {
+  margin: 8px 2px 0;
+  color: #746c60;
+  font-size: 10px;
 }
-.street3-options {
+.street4-options {
   display: grid;
-  grid-template-columns: .75fr 1.25fr;
+  grid-template-columns: .8fr 1.2fr;
   gap: 10px;
   margin-top: 14px;
 }
-.street3-options > label:not(.street3-check) {
+.street4-options > label:not(.street4-check) {
   display: grid;
   gap: 5px;
 }
-.street3-options > label > span {
+.street4-options > label > span {
   font-size: 10px;
   font-weight: 900;
 }
-.street3-options select {
+.street4-options select {
   min-height: 46px;
-  padding: 8px 11px;
-  border: 2px solid #c8c0ae;
+  padding: 8px 10px;
+  border: 2px solid #c8bfac;
   border-radius: 12px;
-  background: #fffdf6;
+  background: #fffdf5;
+  color: #253449;
   font-weight: 850;
 }
-.street3-check {
+.street4-check {
   min-height: 64px;
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 9px 12px;
-  border: 2px solid #c8c0ae;
+  padding: 9px 11px;
+  border: 2px solid #c8bfac;
   border-radius: 12px;
-  background: #fffdf6;
+  background: #fffdf5;
 }
-.street3-check input { width: 18px; height: 18px; accent-color: var(--orange); }
-.street3-check span { display: grid; gap: 2px; }
-.street3-check b { font-size: 12px; }
-.street3-check small { color: #827b70; font-size: 9px; }
-.street3-enter {
+.street4-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--orange);
+}
+.street4-check span {
+  display: grid;
+  gap: 2px;
+}
+.street4-check b { font-size: 11px; }
+.street4-check small { color: #81786b; font-size: 8px; }
+.street4-enter {
   width: 100%;
   min-height: 54px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 14px;
+  margin-top: 15px;
   padding: 10px 16px;
-  border: 2px solid #7c3416;
+  border: 2px solid #773618;
   border-radius: 14px;
-  background: linear-gradient(#ff9c25, #ef7116);
+  background: linear-gradient(#ff9f28, #ee761b);
   color: #fff;
-  box-shadow: 4px 4px 0 #7c3416;
+  box-shadow: 4px 4px 0 #773618;
   cursor: pointer;
   font-size: 16px;
   font-weight: 950;
 }
-.street3-enter b { font-size: 24px; }
-.street3-credit {
-  margin-top: 13px;
-  color: rgba(46, 57, 70, .58);
-  font-size: 8px;
-  text-align: center;
-}
 
-.street3-game {
-  position: relative;
-  min-height: 100svh;
-  overflow: hidden;
-  isolation: isolate;
-  background: #b8d7da;
-}
-.street3-stage-bg {
+.street4-scene-tone {
+  position: absolute;
   z-index: -3;
-}
-.street3-stage-bg img {
-  filter: saturate(1.22) contrast(1.05) brightness(1.07);
-}
-.street3-stage-shade {
-  position: absolute;
-  z-index: -2;
   inset: 0;
-  background:
-    linear-gradient(180deg, rgba(15,35,50,.03) 0 60%, rgba(45,29,16,.16)),
-    radial-gradient(circle at 50% 69%, rgba(255,239,178,.24), transparent 38%);
   pointer-events: none;
+  background:
+    linear-gradient(180deg, transparent 0 51%, rgba(255,239,188,.08) 51% 88%, rgba(44,35,27,.15) 88%),
+    radial-gradient(circle at 50% 71%, rgba(255,239,178,.2), transparent 37%);
 }
-.street3-gamebar {
-  position: absolute;
-  z-index: 50;
-  left: 13px;
-  right: 13px;
-  top: 12px;
+.street4-gamebar {
   display: grid;
   grid-template-columns: auto 1fr auto;
-  align-items: start;
-  gap: 10px;
   pointer-events: none;
 }
-.street3-gamebar > a,
-.street3-stats,
-.street3-actions {
+.street4-gamebar > *,
+.street4-stats,
+.street4-actions {
   pointer-events: auto;
 }
-.street3-gamebar > a {
-  min-height: 42px;
-  display: inline-flex;
-  align-items: center;
-  padding: 8px 13px;
-  border: 2px solid #1f3246;
-  border-radius: 999px;
-  background: rgba(28, 48, 67, .94);
-  color: #fff;
-  text-decoration: none;
-  font-size: 11px;
-  font-weight: 950;
-}
-.street3-stats {
+.street4-stats {
   justify-self: center;
   display: flex;
   overflow: hidden;
-  border: 2px solid #24364a;
-  border-radius: 16px;
-  background: rgba(255,248,221,.95);
-  box-shadow: 0 7px 22px rgba(35, 42, 49, .17);
+  border: 2px solid #26384b;
+  border-radius: 15px;
+  background: rgba(255,249,225,.95);
+  box-shadow: 0 7px 18px rgba(25,39,52,.14);
 }
-.street3-stats span {
-  min-width: 92px;
+.street4-stats span {
+  min-width: 100px;
   display: grid;
   justify-items: center;
-  padding: 7px 12px;
-  border-right: 1px solid rgba(42,55,67,.17);
+  padding: 6px 11px;
+  border-right: 1px solid rgba(38,56,75,.14);
 }
-.street3-stats span:last-child { border-right: 0; }
-.street3-stats small {
-  color: #7d6d5c;
+.street4-stats span:last-child { border-right: 0; }
+.street4-stats small {
+  color: #7b6e5f;
   font-size: 7px;
   font-weight: 950;
-  letter-spacing: .1em;
+  letter-spacing: .08em;
 }
-.street3-stats b { font-size: 18px; }
-.street3-actions {
+.street4-stats b { font-size: 18px; }
+.street4-actions {
   display: flex;
   gap: 6px;
 }
-.street3-actions button {
+.street4-actions button {
   min-height: 40px;
   padding: 7px 10px;
-  border: 2px solid #24364a;
+  border: 2px solid #273a4d;
   border-radius: 12px;
-  background: rgba(255,248,221,.95);
-  color: #26364a;
+  background: rgba(255,249,225,.95);
+  color: #27384a;
   cursor: pointer;
   font-size: 9px;
   font-weight: 900;
 }
-.street3-actions button:disabled { opacity: .55; }
+.street4-actions button:disabled { opacity: .52; }
 
-.street3-arena {
+.street4-world {
   position: absolute;
   z-index: 5;
   inset: 0;
 }
-.street3-crowd {
+.street4-sidewalk-crowd {
   position: absolute;
   inset: 0;
 }
-.street3-student {
+
+.street4-person {
   position: absolute;
   z-index: var(--z);
   width: 72px;
   transform: translate(-50%, -100%);
   transform-origin: center bottom;
-  animation:
-    street3-bob .7s ease-in-out infinite alternate,
-    street3-wander var(--duration) ease-in-out var(--delay) infinite alternate;
-  will-change: transform;
+  will-change: transform, opacity;
 }
-.street3-student img {
+.street4-person-art {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+}
+.street4-person-art img {
   display: block;
   width: 100%;
   height: auto;
-  filter: drop-shadow(0 5px 4px rgba(58, 38, 20, .18));
+  filter: drop-shadow(0 5px 4px rgba(57,37,18,.19));
 }
-.street3-student span {
+.street4-name-bubble {
   position: absolute;
-  z-index: 3;
+  z-index: 8;
   left: 50%;
-  bottom: 88%;
-  max-width: 150px;
+  bottom: 91%;
+  max-width: 160px;
   transform: translateX(-50%);
   overflow: hidden;
-  padding: 3px 7px;
-  border: 1px solid rgba(31, 47, 64, .42);
-  border-radius: 999px;
-  background: rgba(255,255,255,.94);
-  color: #26384d;
-  box-shadow: 0 2px 5px rgba(31,47,64,.1);
+  padding: 4px 8px;
+  border: 2px solid rgba(39,53,67,.45);
+  border-radius: 12px 12px 12px 3px;
+  background: rgba(255,255,255,.95);
+  color: #26384b;
+  box-shadow: 0 3px 8px rgba(32,45,57,.12);
   font-size: 9px;
-  font-weight: 900;
+  font-weight: 950;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.street3-student.was-called {
-  opacity: .45;
-  filter: grayscale(.25);
+.street4-name-bubble::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  bottom: -5px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid rgba(39,53,67,.45);
+  border-bottom: 2px solid rgba(39,53,67,.45);
+  background: #fff;
+  transform: rotate(45deg);
 }
-.street3-student.is-selected {
-  z-index: 38;
-  opacity: 1;
-  filter: none;
-  animation: street3-picked .55s ease-in-out infinite alternate;
+
+/* Ambient street activities */
+.street4-person.activity-walk {
+  animation: street4-walk var(--duration) ease-in-out var(--delay) infinite alternate;
 }
-.street3-student.is-selected span {
-  border: 2px solid #b92d23;
-  background: #fff1a9;
-  color: #8d251c;
-  font-size: 11px;
-  box-shadow: 0 0 0 5px rgba(255, 211, 95, .3);
-}
-@keyframes street3-bob {
-  to { margin-top: -4px; }
-}
-@keyframes street3-wander {
+@keyframes street4-walk {
   from { transform: translate(calc(-50% - var(--drift)), -100%) scaleX(var(--flip)); }
   to { transform: translate(calc(-50% + var(--drift)), -100%) scaleX(var(--flip)); }
 }
-@keyframes street3-picked {
-  from { transform: translate(-50%, -100%) scale(1.05); }
-  to { transform: translate(-50%, -108%) scale(1.18); }
+.street4-person.activity-drink {
+  transform: translate(-50%, -100%) scale(.95);
+  animation: street4-idle 1.4s ease-in-out var(--delay) infinite alternate;
+}
+.street4-person.activity-sweep {
+  animation: street4-sweep-person 1.1s ease-in-out var(--delay) infinite alternate;
+}
+@keyframes street4-idle {
+  to { margin-top: -3px; }
+}
+@keyframes street4-sweep-person {
+  from { transform: translate(-50%, -100%) rotate(-2deg); }
+  to { transform: translate(-50%, -100%) rotate(3deg); }
+}
+.street4-prop {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  bottom: -4px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.street4-prop.drink .stool {
+  position: absolute;
+  left: -17px;
+  bottom: 0;
+  width: 34px;
+  height: 13px;
+  border: 2px solid #783624;
+  border-radius: 3px;
+  background: #d75234;
+  box-shadow: -10px 12px 0 -7px #783624, 10px 12px 0 -7px #783624;
+}
+.street4-prop.drink .glass {
+  position: absolute;
+  left: 14px;
+  bottom: 30px;
+  font-style: normal;
+  font-size: 18px;
+  animation: street4-sip .9s ease-in-out infinite alternate;
+}
+@keyframes street4-sip {
+  to { transform: translate(-5px,-6px) rotate(-12deg); }
+}
+.street4-prop.sweep .broom {
+  position: absolute;
+  left: 8px;
+  bottom: 1px;
+  font-style: normal;
+  font-size: 38px;
+  transform-origin: 50% 15%;
+  animation: street4-broom .8s ease-in-out infinite alternate;
+}
+@keyframes street4-broom {
+  from { transform: rotate(-18deg); }
+  to { transform: rotate(18deg); }
 }
 
-.street3-teacher {
+/* Costume variants inspired by playful Vietnamese street-game styling.
+   These overlays are deliberately original and do not copy another game's art. */
+.street4-costume {
   position: absolute;
-  z-index: 35;
+  z-index: 3;
+  left: 50%;
+  top: 36%;
+  width: 42%;
+  height: 31%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.outfit-baba .street4-costume {
+  border: 2px solid rgba(70,25,20,.46);
+  border-radius: 7px 7px 13px 13px;
+  background:
+    linear-gradient(90deg, transparent 47%, rgba(255,235,188,.65) 48% 51%, transparent 52%),
+    #7d2f40;
+  box-shadow: inset 0 -9px 0 rgba(0,0,0,.08);
+}
+.outfit-baba .street4-costume::before {
+  content: "";
+  position: absolute;
+  left: -23%;
+  top: 9%;
+  width: 146%;
+  height: 18%;
+  border-radius: 99px;
+  background: #7d2f40;
+}
+.outfit-street .street4-costume {
+  border-radius: 6px 6px 11px 11px;
+  background: rgba(32, 112, 128, .86);
+  box-shadow: inset 0 -9px 0 rgba(0,0,0,.09);
+}
+.outfit-briefs .street4-person-art img {
+  filter: saturate(.7) brightness(1.08) drop-shadow(0 5px 4px rgba(57,37,18,.19));
+}
+.outfit-briefs .street4-costume {
+  top: 48%;
+  width: 38%;
+  height: 17%;
+  border: 2px solid rgba(59,37,30,.38);
+  border-radius: 2px 2px 12px 12px;
+  background: #f6f0df;
+  box-shadow: inset 0 -6px 0 #d94e48;
+}
+.outfit-briefs .street4-costume::before {
+  content: "";
+  position: absolute;
+  left: 11%;
+  top: -77%;
+  width: 78%;
+  height: 90%;
+  border-radius: 10px 10px 3px 3px;
+  background: rgba(224,171,128,.88);
+}
+
+/* UFO */
+.street4-ufo-wrap,
+.street4-setup-ufo {
+  pointer-events: none;
+}
+.street4-ufo-wrap {
+  position: absolute;
+  z-index: 52;
+  left: 50%;
+  top: -220px;
+  width: 300px;
+  transform: translateX(-50%);
+  transition: top .85s cubic-bezier(.17,.9,.25,1);
+}
+.street4-ufo-wrap.phase-ufo-enter,
+.street4-ufo-wrap.phase-lifting,
+.street4-ufo-wrap.phase-abducting,
+.street4-ufo-wrap.phase-fainted {
+  top: 6%;
+}
+.street4-ufo {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2.1 / 1;
+  filter: drop-shadow(0 14px 12px rgba(32,45,58,.24));
+}
+.street4-ufo-dome {
+  position: absolute;
+  left: 50%;
+  top: 5%;
+  width: 38%;
+  height: 46%;
+  transform: translateX(-50%);
+  border: 3px solid #30545d;
+  border-radius: 55% 55% 28% 28%;
+  background:
+    radial-gradient(circle at 38% 25%, rgba(255,255,255,.85), transparent 16%),
+    linear-gradient(#8de8ef, #5ab4c0 66%, #3c8d99);
+  box-shadow: inset 0 -10px 0 rgba(20,65,78,.16);
+}
+.street4-ufo-body {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  width: 82%;
+  height: 39%;
+  transform: translateX(-50%);
+  border: 3px solid #40545d;
+  border-radius: 50%;
+  background: linear-gradient(#dce7e7, #718892 58%, #4f6670);
+  box-shadow: inset 0 8px 0 rgba(255,255,255,.32), inset 0 -8px 0 rgba(32,49,56,.2);
+}
+.street4-ufo-light {
+  position: absolute;
+  z-index: 3;
+  top: 61%;
+  width: 8%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #f7e663;
+  box-shadow: 0 0 15px rgba(247,230,99,.9);
+}
+.street4-ufo-light.l1 { left: 24%; }
+.street4-ufo-light.l2 { left: 41%; background: #6df4e5; }
+.street4-ufo-light.l3 { right: 41%; background: #ff9e5f; }
+.street4-ufo-light.l4 { right: 24%; }
+.street4-ufo-wrap.phase-lifting .street4-ufo,
+.street4-ufo-wrap.phase-abducting .street4-ufo {
+  animation: street4-ufo-hover .28s ease-in-out infinite alternate;
+}
+@keyframes street4-ufo-hover {
+  to { transform: translateY(-5px) rotate(.8deg); }
+}
+.street4-beam {
+  position: absolute;
   left: 50%;
   top: 66%;
-  width: 145px;
-  transform: translate(-50%, -100%);
-  filter: drop-shadow(0 10px 7px rgba(52,33,18,.24));
+  width: min(72vw, 920px);
+  height: 70vh;
+  transform: translateX(-50%) scaleY(0);
+  transform-origin: top;
+  opacity: 0;
+  clip-path: polygon(43% 0, 57% 0, 100% 100%, 0 100%);
+  background:
+    linear-gradient(180deg, rgba(199,255,209,.82), rgba(183,255,212,.24) 72%, rgba(183,255,212,0));
+  filter: drop-shadow(0 0 28px rgba(165,255,214,.5));
+  transition: transform .32s ease, opacity .25s ease;
 }
-.street3-teacher > b {
-  position: absolute;
-  z-index: 5;
-  left: 50%;
-  bottom: 98%;
-  transform: translateX(-50%);
-  padding: 5px 9px;
-  border: 2px solid #1d2f43;
-  border-radius: 999px;
-  background: #20364c;
-  color: #fff;
-  font-size: 9px;
-  letter-spacing: .08em;
-  white-space: nowrap;
+.phase-lifting .street4-beam,
+.phase-abducting .street4-beam {
+  transform: translateX(-50%) scaleY(1);
+  opacity: 1;
+  animation: street4-beam-pulse .35s ease-in-out infinite alternate;
 }
-.street3-teacher.is-hunting {
-  animation: street3-teacher-hunt .48s ease-in-out infinite alternate;
-}
-@keyframes street3-teacher-hunt {
-  from { transform: translate(-50%, -100%) rotate(-8deg) scale(1.03); }
-  to { transform: translate(-50%, -100%) rotate(8deg) scale(1.08); }
-}
-.street3-hunt-banner {
-  position: absolute;
-  z-index: 44;
-  left: 50%;
-  top: 16%;
-  transform: translateX(-50%);
-  display: grid;
-  justify-items: center;
-  padding: 10px 22px 12px;
-  border: 3px solid #7f3219;
-  border-radius: 18px;
-  background: rgba(255, 244, 197, .96);
-  box-shadow: 0 9px 0 rgba(104, 53, 26, .14);
-  animation: street3-banner .5s cubic-bezier(.2,1.5,.3,1) both;
-}
-.street3-hunt-banner small {
-  color: #c44920;
-  font-size: 9px;
-  font-weight: 950;
-  letter-spacing: .12em;
-}
-.street3-hunt-banner strong {
-  margin-top: 2px;
-  font-size: clamp(24px, 3vw, 42px);
-  letter-spacing: -.04em;
-}
-@keyframes street3-banner {
-  from { opacity: 0; transform: translate(-50%, -14px) scale(.72); }
+@keyframes street4-beam-pulse {
+  to { opacity: .68; filter: blur(2px) drop-shadow(0 0 36px rgba(165,255,214,.7)); }
 }
 
-.street3-control {
+/* Random sequence */
+.street4-game[data-phase="lifting"] .street4-person {
+  z-index: 55 !important;
+  animation: street4-lift 1.7s cubic-bezier(.35,.02,.2,1) forwards !important;
+}
+@keyframes street4-lift {
+  0% { transform: translate(-50%, -100%) rotate(0) scale(1); }
+  45% { transform: translate(-50%, -190%) rotate(-5deg) scale(.95); }
+  100% { transform: translate(-50%, -330%) rotate(8deg) scale(.78); }
+}
+.street4-game[data-phase="abducting"] .street4-person {
+  z-index: 55 !important;
+  transform: translate(-50%, -330%) scale(.78);
+  animation: street4-float-in-beam .55s ease-in-out infinite alternate !important;
+}
+@keyframes street4-float-in-beam {
+  to { transform: translate(-50%, -345%) rotate(-8deg) scale(.8); }
+}
+.street4-game[data-phase="abducting"] .street4-person.is-selected {
+  z-index: 60 !important;
+  animation: street4-abduct-winner 1.25s cubic-bezier(.2,.6,.2,1) forwards !important;
+}
+@keyframes street4-abduct-winner {
+  0% { opacity: 1; transform: translate(-50%, -330%) scale(.8); }
+  68% { opacity: .92; transform: translate(-50%, -540%) scale(.58) rotate(8deg); }
+  100% { opacity: 0; transform: translate(-50%, -720%) scale(.24) rotate(-12deg); }
+}
+.street4-game[data-phase="fainted"] .street4-person:not(.is-selected):not(.was-taken) {
+  animation: street4-fall-faint var(--recover) cubic-bezier(.22,.72,.24,1) forwards !important;
+}
+@keyframes street4-fall-faint {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -320%) rotate(-3deg) scale(.8);
+  }
+  18% {
+    transform: translate(-50%, -95%) rotate(78deg) scale(.98);
+  }
+  72% {
+    transform: translate(-50%, -95%) rotate(78deg) scale(.98);
+  }
+  88% {
+    transform: translate(-50%, -100%) rotate(12deg) scale(1);
+  }
+  100% {
+    transform: translate(-50%, -100%) rotate(0deg) scale(1);
+  }
+}
+.street4-game[data-phase="fainted"] .street4-person.is-selected,
+.street4-game[data-phase="result"] .street4-person.was-taken {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.street4-event-copy {
   position: absolute;
-  z-index: 46;
+  z-index: 70;
   left: 50%;
-  bottom: 17px;
-  width: min(610px, calc(100% - 28px));
+  top: 20%;
+  transform: translateX(-50%);
+  padding: 11px 22px;
+  border: 3px solid #6d3a21;
+  border-radius: 17px;
+  background: rgba(255,246,211,.95);
+  color: #26384a;
+  box-shadow: 0 8px 0 rgba(84,46,24,.16);
+  text-align: center;
+  animation: street4-pop .32s cubic-bezier(.2,1.4,.25,1) both;
+}
+.street4-event-copy strong {
+  font-size: clamp(19px, 2.5vw, 34px);
+  letter-spacing: -.03em;
+}
+@keyframes street4-pop {
+  from { opacity: 0; transform: translate(-50%, -10px) scale(.75); }
+}
+
+.street4-control {
+  position: absolute;
+  z-index: 75;
+  left: 50%;
+  bottom: 16px;
+  width: min(620px, calc(100% - 28px));
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
   gap: 12px;
   transform: translateX(-50%);
   padding: 10px 10px 10px 17px;
-  border: 3px solid #67401f;
-  border-radius: 19px;
-  background: linear-gradient(#c08742, #9a5c2d);
-  box-shadow: 0 8px 0 rgba(80, 42, 20, .23), inset 0 0 0 2px rgba(255,221,148,.18);
+  border: 3px solid #68401e;
+  border-radius: 18px;
+  background: linear-gradient(#c18b48, #94572b);
+  box-shadow: 0 8px 0 rgba(80,42,20,.22);
 }
-.street3-control > div { display: grid; gap: 2px; color: #fff5d6; }
-.street3-control small {
-  color: #ffd36a;
+.street4-control > div {
+  display: grid;
+  gap: 2px;
+  color: #fff6d7;
+}
+.street4-control small {
+  color: #ffdd78;
   font-size: 8px;
   font-weight: 950;
-  letter-spacing: .12em;
+  letter-spacing: .13em;
 }
-.street3-control span { font-size: 10px; font-weight: 750; }
-.street3-control button {
-  min-height: 58px;
-  padding: 10px 20px;
-  border: 3px solid #861c17;
-  border-radius: 15px;
-  background: linear-gradient(#f04b3e, #d52e28);
+.street4-control span { font-size: 10px; font-weight: 750; }
+.street4-control button {
+  min-height: 56px;
+  padding: 10px 18px;
+  border: 3px solid #771d18;
+  border-radius: 14px;
+  background: linear-gradient(#f14b3d, #d42e29);
   color: #fff;
-  box-shadow: 3px 4px 0 #861c17;
+  box-shadow: 3px 4px 0 #771d18;
   cursor: pointer;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 950;
 }
-.street3-control button:disabled { opacity: .62; cursor: default; }
+.street4-control button:disabled { opacity: .6; cursor: default; }
 
-.street3-result-backdrop {
+.street4-result-backdrop {
   position: absolute;
-  z-index: 80;
+  z-index: 100;
   inset: 0;
   display: grid;
   place-items: center;
   padding: 20px;
-  background: rgba(21, 32, 43, .54);
+  background: rgba(20, 31, 42, .54);
   backdrop-filter: blur(5px);
 }
-.street3-result {
-  width: min(730px, 100%);
+.street4-result {
+  width: min(720px, 100%);
   overflow: hidden;
-  border: 4px solid #743719;
+  border: 4px solid #6a371d;
   border-radius: 24px;
-  background: #fff6d8;
-  box-shadow: 0 22px 70px rgba(22, 27, 33, .34);
-  animation: street3-result-in .36s cubic-bezier(.16,1.35,.3,1) both;
+  background: #fff5d7;
+  box-shadow: 0 24px 80px rgba(22,28,34,.34);
+  animation: street4-result-in .35s cubic-bezier(.18,1.35,.25,1) both;
 }
-@keyframes street3-result-in {
+@keyframes street4-result-in {
   from { opacity: 0; transform: translateY(18px) scale(.86); }
 }
-.street3-result header {
-  padding: 19px 22px 16px;
-  background: linear-gradient(110deg, #9b5528, #71361e);
+.street4-result header {
+  padding: 20px 22px 16px;
+  background: linear-gradient(110deg, #925129, #66371f);
   color: #fff;
   text-align: center;
 }
-.street3-result header small {
-  color: #ffdf79;
+.street4-result header small {
+  color: #ffe17c;
   font-size: 9px;
   font-weight: 950;
-  letter-spacing: .15em;
+  letter-spacing: .13em;
 }
-.street3-result header h2 {
-  margin: 3px 0 0;
-  font-size: clamp(30px, 5vw, 54px);
+.street4-result header h2 {
+  margin: 4px 0 0;
+  font-size: clamp(30px, 5vw, 52px);
   letter-spacing: -.05em;
 }
-.street3-winners {
+.street4-winners {
   display: grid;
-  gap: 9px;
+  gap: 10px;
   padding: 18px 20px;
 }
-.street3-winners article {
-  min-height: 92px;
+.street4-winners article {
+  min-height: 96px;
   display: grid;
-  grid-template-columns: 76px 1fr;
+  grid-template-columns: 84px 1fr;
   align-items: center;
   gap: 14px;
   padding: 9px 14px;
-  border: 2px solid rgba(77, 57, 39, .19);
+  border: 2px solid rgba(76,56,39,.18);
   border-radius: 16px;
-  background: rgba(255,255,255,.65);
+  background: rgba(255,255,255,.7);
 }
-.street3-winners img {
-  width: 72px;
-  max-height: 82px;
+.street4-winners img {
+  width: 76px;
+  max-height: 86px;
   object-fit: contain;
-  filter: drop-shadow(0 5px 3px rgba(65,44,22,.15));
+  filter: drop-shadow(0 5px 3px rgba(67,44,23,.15));
 }
-.street3-winners h3 {
-  margin: 0;
-  color: #c04421;
-  font-size: 25px;
+.street4-winners small {
+  color: #af542d;
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: .1em;
 }
-.street3-winners p {
-  margin: 4px 0 0;
-  color: #66594b;
-  font-size: 12px;
-  font-weight: 750;
+.street4-winners h3 {
+  margin: 2px 0 0;
+  color: #c33e22;
+  font-size: 27px;
 }
-.street3-result footer {
+.street4-result footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 0 20px 19px;
+  padding: 0 20px 18px;
 }
-.street3-result footer span {
-  color: #807565;
+.street4-result footer span {
+  color: #766b5e;
   font-size: 9px;
   font-weight: 750;
 }
-.street3-result footer button {
-  min-height: 43px;
-  padding: 8px 15px;
-  border: 2px solid #7d2519;
-  border-radius: 12px;
-  background: #e94a32;
+.street4-result footer button {
+  min-height: 42px;
+  padding: 8px 14px;
+  border: 2px solid #7a281c;
+  border-radius: 11px;
+  background: #e84b33;
   color: #fff;
-  box-shadow: 3px 3px 0 #7d2519;
+  box-shadow: 3px 3px 0 #7a281c;
   cursor: pointer;
   font-size: 11px;
   font-weight: 950;
 }
-.game-credit {
-  position: absolute;
-  z-index: 10;
-  left: 9px;
-  bottom: 7px;
-  margin: 0;
-  color: rgba(255,255,255,.72);
-  text-shadow: 0 1px 2px rgba(0,0,0,.28);
-}
 
-.street3-game[data-density="medium"] .street3-student { width: 62px; }
-.street3-game[data-density="dense"] .street3-student { width: 50px; }
-.street3-game[data-density="ultra"] .street3-student { width: 40px; }
-.street3-game[data-density="dense"] .street3-student span,
-.street3-game[data-density="ultra"] .street3-student span {
+.street4-game[data-density="medium"] .street4-person { width: 61px; }
+.street4-game[data-density="dense"] .street4-person { width: 49px; }
+.street4-game[data-density="ultra"] .street4-person { width: 39px; }
+.street4-game[data-density="dense"] .street4-name-bubble,
+.street4-game[data-density="ultra"] .street4-name-bubble {
   max-width: 100px;
   padding: 2px 5px;
   font-size: 7px;
 }
-.street3-game[data-density="ultra"] .street3-student:not(.is-selected) span {
-  opacity: .72;
-}
 
 @media (max-width: 900px) {
-  .street3-setup-grid { grid-template-columns: 1fr; }
-  .street3-hero { min-height: 440px; }
-  .street3-form-card { border-left: 0; border-top: 3px solid rgba(62,45,29,.32); }
-  .street3-gamebar { grid-template-columns: auto 1fr; }
-  .street3-stats { display: none; }
-  .street3-actions { justify-self: end; }
-  .street3-teacher { width: 115px; }
+  .street4-setup-grid { grid-template-columns: 1fr; }
+  .street4-setup-hero { min-height: 420px; }
+  .street4-form-card {
+    border-left: 0;
+    border-top: 3px solid rgba(68,48,29,.28);
+  }
+  .street4-gamebar { grid-template-columns: auto 1fr; }
+  .street4-stats { display: none; }
+  .street4-actions { justify-self: end; }
 }
 @media (max-width: 620px) {
-  .street3-setup { padding-inline: 8px; }
-  .street3-topline span { display: none; }
-  .street3-hero { min-height: 360px; }
-  .street3-title-board { left: 16px; top: 18px; width: calc(100% - 32px); }
-  .street3-title-board h1 { font-size: 45px; }
-  .street3-form-card { padding: 19px; }
-  .street3-form-card textarea { min-height: 280px; }
-  .street3-options { grid-template-columns: 1fr; }
-  .street3-actions button:nth-child(2) { display: none; }
-  .street3-student { width: 45px; }
-  .street3-student span { font-size: 7px; }
-  .street3-control { grid-template-columns: 1fr; padding: 9px; }
-  .street3-control > div { display: none; }
-  .street3-control button { width: 100%; }
-  .street3-result footer { align-items: stretch; flex-direction: column; }
-  .street3-result footer button { width: 100%; }
+  .street4-setup { padding-inline: 8px; }
+  .street4-topline span { display: none; }
+  .street4-setup-hero { min-height: 350px; }
+  .street4-title-board { left: 16px; top: 18px; width: calc(100% - 32px); }
+  .street4-title-board h1 { font-size: 44px; }
+  .street4-setup-ufo { width: 205px; top: 39%; }
+  .street4-form-card { padding: 18px; }
+  .street4-form-card textarea { min-height: 280px; }
+  .street4-options { grid-template-columns: 1fr; }
+  .street4-actions button:nth-child(2) { display: none; }
+  .street4-person { width: 43px; }
+  .street4-name-bubble { font-size: 7px; }
+  .street4-ufo-wrap { width: 210px; }
+  .street4-control { grid-template-columns: 1fr; padding: 9px; }
+  .street4-control > div { display: none; }
+  .street4-control button { width: 100%; }
+  .street4-result footer { align-items: stretch; flex-direction: column; }
+  .street4-result footer button { width: 100%; }
 }
