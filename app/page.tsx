@@ -29,6 +29,15 @@ const games = [
     status: "Mới",
   },
   {
+    href: "/street-random",
+    eyebrow: "RANDOM NAME · RETRO VIỆT NAM",
+    title: "Khu Phố Gọi Tên",
+    description: "Cả lớp đi dạo trong khu phố 2D, UFO xuất hiện và tóm ngẫu nhiên học sinh lên bảng theo cơ chế công bằng.",
+    icon: "🛸",
+    className: "hub-card street",
+    status: "Mới",
+  },
+  {
     href: "/pose-quiz",
     eyebrow: "AI VISION · YOLO26 POSE",
     title: "Pose Quiz AI",
