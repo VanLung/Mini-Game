@@ -199,8 +199,7 @@ export function StreetRandomGame() {
         }
 
         const y = 63 + agent.lane * 6.2;
-        element.style.transform =
-          "translate3d(" + agent.x + "vw,0,0) scaleX(" + agent.direction + ")";
+        element.style.left = agent.x + "%";
         element.style.top = y + "%";
       }
 
@@ -609,15 +608,6 @@ export function StreetRandomGame() {
               <div className="street-result-actions">
                 <button className="street-primary" onClick={continueRound} type="button">
                   Tiếp tục
-                </button>
-                <button
-                  onClick={() => {
-                    continueRound();
-                    window.setTimeout(() => void startDraw(), 120);
-                  }}
-                  type="button"
-                >
-                  Gọi tiếp ngay
                 </button>
               </div>
             </section>
